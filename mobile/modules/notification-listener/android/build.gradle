@@ -1,0 +1,11 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'expo-module-gradle-plugin'
+
+android {
+  namespace "expo.modules.notificationlistener"
+
+  defaultConfig {
+    versionName "1.0.0"
+  }
+}

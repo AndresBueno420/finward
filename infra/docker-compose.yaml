@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: finward_db
+    environment:
+      POSTGRES_USER: finward_admin
+      POSTGRES_PASSWORD: finward_secret_password 
+      POSTGRES_DB: finward_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - finward_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:4.3.0-rc.0-alpine
+    container_name: finward_queue
+    environment:
+      RABBITMQ_DEFAULT_USER: finward_rmq
+      RABBITMQ_DEFAULT_PASS: finward_rmq_pass
+    ports:
+      - "5672:5672"  
+      - "15672:15672"
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: finward_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@finward.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  finward_pgdata:

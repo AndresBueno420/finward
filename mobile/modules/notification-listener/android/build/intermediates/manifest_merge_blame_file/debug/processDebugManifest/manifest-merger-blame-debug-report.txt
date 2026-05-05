@@ -1,0 +1,37 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="expo.modules.notificationlistener" >
+4
+5    <uses-sdk android:minSdkVersion="24" />
+6
+7    <!--
+8    BIND_NOTIFICATION_LISTENER_SERVICE is a signature-level permission.
+9    It cannot be granted via requestPermissions(); the user must enable
+10    this app manually in Settings → Apps → Notification Access.
+11    -->
+12    <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" />
+12-->C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:9:3-91
+12-->C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:9:20-88
+13
+14    <application>
+14-->C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:11:3-21:17
+15        <service
+15-->C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:12:5-20:15
+16            android:name="expo.modules.notificationlistener.FinwardNotificationListenerService"
+16-->C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:13:7-57
+17            android:exported="true"
+17-->C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:16:7-30
+18            android:label="FinWard Notification Listener"
+18-->C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:14:7-52
+19            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" >
+19-->C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:15:7-81
+20            <intent-filter>
+20-->C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:17:7-19:23
+21                <action android:name="android.service.notification.NotificationListenerService" />
+21-->C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:18:9-91
+21-->C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:18:17-88
+22            </intent-filter>
+23        </service>
+24    </application>
+25
+26</manifest>

@@ -1,0 +1,12 @@
+{
+  "name": "finward-migration",
+  "version": "1.0.0",
+  "description": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AndresBueno420/finward-migration.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

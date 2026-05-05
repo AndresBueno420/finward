@@ -1,0 +1,9 @@
+{
+  "name": "notification-listener",
+  "version": "1.0.0",
+  "description": "Native notification listener module for FinWard",
+  "main": "index.ts",
+  "peerDependencies": {
+    "expo-modules-core": "*"
+  }
+}

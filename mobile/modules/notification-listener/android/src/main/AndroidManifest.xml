@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!--
+    BIND_NOTIFICATION_LISTENER_SERVICE is a signature-level permission.
+    It cannot be granted via requestPermissions(); the user must enable
+    this app manually in Settings → Apps → Notification Access.
+  -->
+  <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" />
+
+  <application>
+    <service
+      android:name=".FinwardNotificationListenerService"
+      android:label="FinWard Notification Listener"
+      android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.service.notification.NotificationListenerService" />
+      </intent-filter>
+    </service>
+  </application>
+
+</manifest>

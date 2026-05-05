@@ -1,0 +1,38 @@
+-- Merging decision tree log ---
+manifest
+ADDED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:2:1-23:12
+INJECTED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:2:1-23:12
+	package
+		INJECTED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml
+	xmlns:android
+		ADDED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:2:11-69
+uses-permission#android.permission.BIND_NOTIFICATION_LISTENER_SERVICE
+ADDED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:9:3-91
+	android:name
+		ADDED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:9:20-88
+application
+ADDED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:11:3-21:17
+service#expo.modules.notificationlistener.FinwardNotificationListenerService
+ADDED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:12:5-20:15
+	android:label
+		ADDED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:14:7-52
+	android:exported
+		ADDED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:16:7-30
+	android:permission
+		ADDED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:15:7-81
+	android:name
+		ADDED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:13:7-57
+intent-filter#action:name:android.service.notification.NotificationListenerService
+ADDED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:17:7-19:23
+action#android.service.notification.NotificationListenerService
+ADDED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:18:9-91
+	android:name
+		ADDED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml:18:17-88
+uses-sdk
+INJECTED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml
+INJECTED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from C:\Users\USUARIO\Projects\FinWard\finward-migration\frontend\modules\notification-listener\android\src\main\AndroidManifest.xml

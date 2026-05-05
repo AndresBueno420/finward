@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FinWard — Mobile Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="design-canvas.jsx" type="text/babel"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: #EDEEF2; }
+</style>
+</head>
+<body>
+<script type="text/babel">
+
+// ─── Design tokens ──────────────────────────────────────────
+const T = {
+  blue:      '#4A6FA5',
+  blueLight: '#EEF2F9',
+  blueMid:   '#7B9FD4',
+  green:     '#2E8B6A',
+  greenLight:'#E6F5F0',
+  greenMid:  '#5BB396',
+  bg:        '#F5F7FA',
+  card:      '#FFFFFF',
+  text:      '#1A1D23',
+  textMid:   '#5A6070',
+  textLight: '#9AA0AD',
+  border:    '#E8EAF0',
+  red:       '#D94F4F',
+  redLight:  '#FDF0F0',
+  orange:    '#E07A2F',
+  orangeLight:'#FEF3EC',
+  purple:    '#7C5CBF',
+  purpleLight:'#F3EFFC',
+  yellow:    '#C9962A',
+  yellowLight:'#FDF5E0',
+};
+
+// ─── Shared phone shell ──────────────────────────────────────
+function PhoneShell({ children, statusDark = false }) {
+  const fg = statusDark ? '#fff' : T.text;
+  return (
+    <div style={{
+      width: 375, height: 812,
+      background: T.bg,
+      borderRadius: 44,
+      overflow: 'hidden',
+      border: '10px solid #1C1C1E',
+      boxShadow: '0 0 0 1px #3A3A3C, inset 0 0 0 1px #4A4A4C, 0 40px 80px rgba(0,0,0,0.32)',
+      display: 'flex', flexDirection: 'column',
+      fontFamily: "'DM Sans', sans-serif",
+      position: 'relative',
+    }}>
+      {/* Status bar */}
+      <div style={{
+        height: 44, display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', padding: '0 20px',
+        flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 15, fontWeight: 600, color: fg }}>9:41</span>
+        {/* Notch */}
+        <div style={{
+          position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+          width: 126, height: 34, background: '#1C1C1E', borderRadius: '0 0 20px 20px',
+        }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <svg width="17" height="12" viewBox="0 0 17 12" fill={fg}>
+            <rect x="0" y="3" width="3" height="9" rx="1" opacity="0.4"/>
+            <rect x="4.5" y="2" width="3" height="10" rx="1" opacity="0.6"/>
+            <rect x="9" y="0" width="3" height="12" rx="1" opacity="0.8"/>
+            <rect x="13.5" y="0" width="3" height="12" rx="1"/>
+          </svg>
+          <svg width="16" height="12" viewBox="0 0 16 12" fill={fg}>
+            <path d="M8 2.5C10.5 2.5 12.7 3.5 14.3 5.1L15.8 3.5C13.8 1.3 11.1 0 8 0C4.9 0 2.2 1.3 0.2 3.5L1.7 5.1C3.3 3.5 5.5 2.5 8 2.5Z" opacity="0.4"/>
+            <path d="M8 5.5C9.7 5.5 11.2 6.2 12.3 7.3L13.8 5.7C12.3 4.2 10.2 3.3 8 3.3C5.8 3.3 3.7 4.2 2.2 5.7L3.7 7.3C4.8 6.2 6.3 5.5 8 5.5Z" opacity="0.7"/>
+            <circle cx="8" cy="11" r="1.5"/>
+          </svg>
+          <svg width="25" height="12" viewBox="0 0 25 12" fill="none">
+            <rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke={fg} strokeOpacity="0.35"/>
+            <rect x="2" y="2" width="17" height="8" rx="2" fill={fg}/>
+            <path d="M23 4V8C23.8 7.5 24.5 6.8 24.5 6C24.5 5.2 23.8 4.5 23 4Z" fill={fg} opacity="0.4"/>
+          </svg>
+        </div>
+      </div>
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {children}
+      </div>
+      {/* Home indicator */}
+      <div style={{
+        height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        background: statusDark ? 'rgba(0,0,0,0.3)' : T.bg,
+      }}>
+        <div style={{ width: 134, height: 5, borderRadius: 3, background: statusDark ? 'rgba(255,255,255,0.5)' : T.text, opacity: statusDark ? 1 : 0.18 }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Small SVG icons ─────────────────────────────────────────
+const Icon = {
+  food: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,
+  transport: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+  entertainment: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,
+  subscriptions: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>,
+  other: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  alert: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+  eye: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+  chevron: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>,
+  bell: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+  check: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
+};
+
+// ─── SCREEN 1: Login ─────────────────────────────────────────
+function LoginScreen() {
+  const [email, setEmail] = React.useState('');
+  const [pass, setPass] = React.useState('');
+  const [focused, setFocused] = React.useState(null);
+
+  return (
+    <PhoneShell>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 28px', background: '#fff' }}>
+        {/* Logo area */}
+        <div style={{ paddingTop: 56, paddingBottom: 48, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          {/* Logo mark */}
+          <div style={{
+            width: 56, height: 56, borderRadius: 16, background: T.blue,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginBottom: 14,
+            boxShadow: `0 8px 24px ${T.blue}44`,
+          }}>
+            <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+              <path d="M6 22V10l9-6 9 6v12l-9 5-9-5z" stroke="#fff" strokeWidth="2" strokeLinejoin="round"/>
+              <path d="M15 4v22M6 10l9 6 9-6" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: T.text, letterSpacing: -0.5 }}>FinWard</div>
+          <div style={{ fontSize: 14, color: T.textMid, marginTop: 6 }}>Tus finanzas, siempre bajo control</div>
+        </div>
+
+        {/* Form */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: T.textMid, marginBottom: 6, letterSpacing: 0.3, textTransform: 'uppercase' }}>Correo electrónico</div>
+            <div style={{
+              height: 52, borderRadius: 14, border: `1.5px solid ${focused === 'email' ? T.blue : T.border}`,
+              background: focused === 'email' ? T.blueLight : '#FAFBFC',
+              display: 'flex', alignItems: 'center', padding: '0 16px', gap: 10,
+              transition: 'all 0.2s',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={focused === 'email' ? T.blue : T.textLight} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <span style={{ fontSize: 15, color: email ? T.text : T.textLight }}>
+                {email || 'usuario@email.com'}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: T.textMid, marginBottom: 6, letterSpacing: 0.3, textTransform: 'uppercase' }}>Contraseña</div>
+            <div style={{
+              height: 52, borderRadius: 14, border: `1.5px solid ${focused === 'pass' ? T.blue : T.border}`,
+              background: focused === 'pass' ? T.blueLight : '#FAFBFC',
+              display: 'flex', alignItems: 'center', padding: '0 16px', gap: 10,
+              transition: 'all 0.2s',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={focused === 'pass' ? T.blue : T.textLight} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span style={{ flex: 1, fontSize: 15, color: T.text, letterSpacing: 4 }}>••••••••</span>
+              <span style={{ color: T.textLight }}><Icon.eye /></span>
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'right', marginTop: -4 }}>
+            <span style={{ fontSize: 13, color: T.blue, fontWeight: 500 }}>¿Olvidaste tu contraseña?</span>
+          </div>
+
+          {/* Button */}
+          <div style={{
+            height: 54, borderRadius: 16, background: T.blue,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginTop: 8, cursor: 'pointer',
+            boxShadow: `0 6px 20px ${T.blue}44`,
+          }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: '#fff', letterSpacing: 0.2 }}>Ingresar</span>
+          </div>
+
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '8px 0' }}>
+            <div style={{ flex: 1, height: 1, background: T.border }} />
+            <span style={{ fontSize: 13, color: T.textLight }}>o continúa con</span>
+            <div style={{ flex: 1, height: 1, background: T.border }} />
+          </div>
+
+          {/* Google */}
+          <div style={{
+            height: 52, borderRadius: 14, border: `1.5px solid ${T.border}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer',
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            <span style={{ fontSize: 15, fontWeight: 500, color: T.text }}>Google</span>
+          </div>
+        </div>
+
+        <div style={{ flex: 1 }} />
+        <div style={{ textAlign: 'center', paddingBottom: 20 }}>
+          <span style={{ fontSize: 14, color: T.textMid }}>¿No tienes cuenta? </span>
+          <span style={{ fontSize: 14, color: T.blue, fontWeight: 600 }}>Regístrate</span>
+        </div>
+      </div>
+    </PhoneShell>
+  );
+}
+
+// ─── Donut chart SVG ─────────────────────────────────────────
+function DonutChart({ segments, size = 160, thickness = 28 }) {
+  const r = (size - thickness) / 2;
+  const cx = size / 2, cy = size / 2;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+  const total = segments.reduce((s, x) => s + x.value, 0);
+  const parts = segments.map(seg => {
+    const dash = (seg.value / total) * circ;
+    const gap = circ - dash;
+    const item = { ...seg, dash, gap, offset };
+    offset += dash + 2;
+    return item;
+  });
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+      {parts.map((p, i) => (
+        <circle key={i} cx={cx} cy={cy} r={r}
+          fill="none" stroke={p.color} strokeWidth={thickness}
+          strokeDasharray={`${p.dash - 2} ${circ - p.dash + 2}`}
+          strokeDashoffset={-p.offset}
+          strokeLinecap="round"
+        />
+      ))}
+    </svg>
+  );
+}
+
+// ─── SCREEN 2: Dashboard ─────────────────────────────────────
+function DashboardScreen() {
+  const categories = [
+    { label: 'Alimentación', value: 38, color: T.blue, icon: 'food', amount: 142400 },
+    { label: 'Transporte',   value: 22, color: T.green, icon: 'transport', amount: 82600 },
+    { label: 'Entretenim.',  value: 18, color: T.purple, icon: 'entertainment', amount: 67300 },
+    { label: 'Suscripciones',value: 14, color: T.orange, icon: 'subscriptions', amount: 52400 },
+    { label: 'Otros',        value: 8,  color: T.textLight, icon: 'other', amount: 29900 },
+  ];
+  const txns = [
+    { name: 'Rappi', cat: 'Alimentación', amount: -18900, color: T.blue, bg: T.blueLight, time: 'Hoy, 1:24 PM', icon: '🛵', abbr: 'RP' },
+    { name: 'Transmilenio', cat: 'Transporte', amount: -5200, color: T.green, bg: T.greenLight, time: 'Hoy, 8:45 AM', icon: '🚌', abbr: 'TM' },
+    { name: 'Netflix', cat: 'Suscripción', amount: -22900, color: T.orange, bg: T.orangeLight, time: 'Ayer, 12:00 AM', icon: '📺', abbr: 'NF' },
+    { name: 'Jumbo', cat: 'Alimentación', amount: -68400, color: T.blue, bg: T.blueLight, time: 'Ayer, 6:11 PM', icon: '🛒', abbr: 'JB' },
+  ];
+  const totalSpent = 374600;
+
+  const fmt = (n) => `$${Math.abs(n).toLocaleString('es-CO')}`;
+
+  return (
+    <PhoneShell>
+      <div style={{ flex: 1, overflowY: 'auto', background: T.bg }}>
+        {/* Header */}
+        <div style={{ background: T.blue, padding: '16px 24px 32px', color: '#fff', position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div>
+              <div style={{ fontSize: 13, opacity: 0.75, marginBottom: 2 }}>Buenos días,</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>Carlos Rodríguez 👋</div>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <div style={{ width: 40, height: 40, borderRadius: 20, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon.bell />
+              </div>
+              <div style={{ position: 'absolute', top: 2, right: 2, width: 10, height: 10, borderRadius: 5, background: '#FF6B6B', border: '2px solid' + T.blue }} />
+            </div>
+          </div>
+          {/* Balance card */}
+          <div style={{
+            background: 'rgba(255,255,255,0.12)', borderRadius: 20, padding: '18px 20px',
+            border: '1px solid rgba(255,255,255,0.18)',
+          }}>
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6, letterSpacing: 0.5, textTransform: 'uppercase' }}>Gasto total — Abril 2026</div>
+            <div style={{ fontSize: 36, fontWeight: 700, letterSpacing: -1 }}>${totalSpent.toLocaleString('es-CO')}</div>
+            <div style={{ fontSize: 13, opacity: 0.65, marginTop: 4 }}>↑ 12% respecto a marzo</div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: '0 20px', marginTop: -12 }}>
+          {/* Donut card */}
+          <div style={{ background: T.card, borderRadius: 20, padding: '20px', marginBottom: 16, boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: T.text, marginBottom: 16 }}>Por categoría</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <DonutChart segments={categories.map(c => ({ value: c.value, color: c.color }))} size={130} thickness={22} />
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ fontSize: 10, color: T.textLight, letterSpacing: 0.3 }}>TOTAL</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>$374k</div>
+                </div>
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {categories.map((c, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 4, background: c.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1, fontSize: 12, color: T.textMid }}>{c.label}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{c.value}%</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Recent transactions */}
+          <div style={{ background: T.card, borderRadius: 20, padding: '20px', marginBottom: 20, boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: T.text }}>Últimos gastos</div>
+              <div style={{ fontSize: 13, color: T.blue, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 2 }}>Ver todos <Icon.chevron /></div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {txns.map((tx, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < txns.length - 1 ? `1px solid ${T.border}` : 'none' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 12, background: tx.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ fontSize: 18 }}>{tx.icon}</span>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{tx.name}</div>
+                    <div style={{ fontSize: 12, color: T.textLight, marginTop: 1 }}>{tx.time}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.red }}>{fmt(tx.amount)}</div>
+                    <div style={{ fontSize: 11, color: tx.color, marginTop: 1, fontWeight: 500 }}>{tx.cat}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom nav */}
+      <div style={{
+        height: 60, background: T.card, borderTop: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-around',
+        padding: '0 8px', flexShrink: 0,
+      }}>
+        {[
+          { label: 'Inicio', active: true, icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+          { label: 'Suscripciones', icon: <Icon.subscriptions /> },
+          { label: 'Alertas', icon: <Icon.alert /> },
+          { label: 'Perfil', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+        ].map((item, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '4px 16px' }}>
+            <div style={{ color: item.active ? T.blue : T.textLight }}>{item.icon}</div>
+            <div style={{ fontSize: 10, color: item.active ? T.blue : T.textLight, fontWeight: item.active ? 600 : 400 }}>{item.label}</div>
+          </div>
+        ))}
+      </div>
+    </PhoneShell>
+  );
+}
+
+// ─── SCREEN 3: Subscriptions ──────────────────────────────────
+function SubscriptionsScreen() {
+  const subs = [
+    { name: 'Netflix', plan: 'Premium · 4K', amount: 22900, next: '1 may', color: '#E50914', bg: '#FEF0F0', letter: 'N', status: 'active' },
+    { name: 'Spotify', plan: 'Individual', amount: 9900, next: '3 may', color: '#1DB954', bg: '#EDFAF3', letter: 'S', status: 'active' },
+    { name: 'Gimnasio Smart', plan: 'Mensual', amount: 89000, next: '7 may', color: T.orange, bg: T.orangeLight, letter: 'G', status: 'active' },
+    { name: 'Adobe CC', plan: 'Photography', amount: 35900, next: '12 may', color: '#FF0000', bg: '#FFF0F0', letter: 'A', status: 'active' },
+    { name: 'iCloud+', plan: '200 GB', amount: 3900, next: '15 may', color: T.blue, bg: T.blueLight, letter: 'i', status: 'active' },
+    { name: 'YouTube Premium', plan: 'Individual', amount: 12900, next: '20 may', color: '#FF0000', bg: '#FFF0F0', letter: 'Y', status: 'paused' },
+  ];
+  const total = subs.filter(s => s.status === 'active').reduce((s, x) => s + x.amount, 0);
+  const fmt = n => `$${n.toLocaleString('es-CO')}`;
+
+  return (
+    <PhoneShell>
+      <div style={{ flex: 1, overflowY: 'auto', background: T.bg }}>
+        {/* Header */}
+        <div style={{ background: T.card, padding: '16px 24px 20px', borderBottom: `1px solid ${T.border}` }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: T.text, marginBottom: 4 }}>Suscripciones</div>
+          <div style={{ fontSize: 14, color: T.textMid }}>Detectadas automáticamente por IA</div>
+        </div>
+
+        <div style={{ padding: '16px 20px' }}>
+          {/* Summary pill */}
+          <div style={{
+            background: T.green, borderRadius: 16, padding: '14px 20px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            marginBottom: 20, boxShadow: `0 6px 20px ${T.green}40`,
+          }}>
+            <div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginBottom: 2 }}>Total mensual activo</div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: '#fff' }}>{fmt(total)}</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginBottom: 2 }}>Suscripciones</div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: '#fff' }}>{subs.filter(s=>s.status==='active').length}</div>
+            </div>
+          </div>
+
+          {/* List */}
+          <div style={{ background: T.card, borderRadius: 20, overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
+            {subs.map((sub, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
+                borderBottom: i < subs.length - 1 ? `1px solid ${T.border}` : 'none',
+                opacity: sub.status === 'paused' ? 0.55 : 1,
+              }}>
+                {/* Logo circle */}
+                <div style={{
+                  width: 44, height: 44, borderRadius: 14, background: sub.bg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 20, fontWeight: 800, color: sub.color, flexShrink: 0,
+                  border: `1.5px solid ${sub.color}22`,
+                }}>
+                  {sub.letter}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 15, fontWeight: 600, color: T.text }}>{sub.name}</span>
+                    {sub.status === 'paused' && (
+                      <span style={{ fontSize: 10, background: T.border, color: T.textMid, borderRadius: 6, padding: '2px 6px', fontWeight: 600 }}>PAUSADO</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: T.textLight, marginTop: 2 }}>{sub.plan}</div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>{fmt(sub.amount)}</div>
+                  <div style={{ fontSize: 11, color: T.textLight, marginTop: 2 }}>próximo {sub.next}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Add hint */}
+          <div style={{
+            marginTop: 14, border: `1.5px dashed ${T.border}`, borderRadius: 16,
+            padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: T.blueLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.blue} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: T.blue }}>Agregar suscripción</div>
+              <div style={{ fontSize: 12, color: T.textLight }}>Añade una manualmente</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom nav */}
+      <div style={{
+        height: 60, background: T.card, borderTop: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-around',
+        padding: '0 8px', flexShrink: 0,
+      }}>
+        {[
+          { label: 'Inicio', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+          { label: 'Suscripciones', active: true, icon: <Icon.subscriptions /> },
+          { label: 'Alertas', icon: <Icon.alert /> },
+          { label: 'Perfil', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+        ].map((item, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '4px 16px' }}>
+            <div style={{ color: item.active ? T.green : T.textLight }}>{item.icon}</div>
+            <div style={{ fontSize: 10, color: item.active ? T.green : T.textLight, fontWeight: item.active ? 600 : 400 }}>{item.label}</div>
+          </div>
+        ))}
+      </div>
+    </PhoneShell>
+  );
+}
+
+// ─── SCREEN 4: Anomaly Alert ──────────────────────────────────
+function AnomalyScreen() {
+  const [dismissed, setDismissed] = React.useState(false);
+
+  return (
+    <PhoneShell>
+      <div style={{ flex: 1, background: T.bg, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+        {/* Header */}
+        <div style={{ background: T.card, padding: '16px 24px 20px', borderBottom: `1px solid ${T.border}` }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: T.text, marginBottom: 4 }}>Alertas</div>
+          <div style={{ fontSize: 14, color: T.textMid }}>Revisados por IA</div>
+        </div>
+
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Main alert card */}
+          <div style={{
+            background: T.card, borderRadius: 20, overflow: 'hidden',
+            boxShadow: '0 4px 24px rgba(217,79,79,0.18)',
+            border: `1.5px solid ${T.red}22`,
+          }}>
+            {/* Alert banner */}
+            <div style={{
+              background: T.red, padding: '14px 18px',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <div style={{ color: '#fff' }}><Icon.alert /></div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Cobro inusual detectado</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 1 }}>Hoy a las 3:47 AM</div>
+              </div>
+              <div style={{ marginLeft: 'auto', fontSize: 11, background: 'rgba(255,255,255,0.2)', color: '#fff', padding: '3px 8px', borderRadius: 20, fontWeight: 600 }}>NUEVO</div>
+            </div>
+
+            {/* Merchant info */}
+            <div style={{ padding: '20px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+                <div style={{ width: 52, height: 52, borderRadius: 16, background: T.redLight, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+                  🏬
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: T.text }}>TIENDA ONLINE XYZ</div>
+                  <div style={{ fontSize: 13, color: T.textLight, marginTop: 2 }}>Compra en línea · Bogotá, CO</div>
+                </div>
+              </div>
+
+              {/* Amount */}
+              <div style={{
+                background: T.redLight, borderRadius: 14, padding: '14px 16px',
+                marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                <div>
+                  <div style={{ fontSize: 12, color: T.red, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase' }}>Monto cobrado</div>
+                  <div style={{ fontSize: 30, fontWeight: 800, color: T.red, marginTop: 2, letterSpacing: -1 }}>$289.900</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 11, color: T.textLight }}>Promedio histórico</div>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: T.textMid, marginTop: 2 }}>$45.000</div>
+                </div>
+              </div>
+
+              {/* Reason tags */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 10 }}>¿Por qué es sospechoso?</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    { icon: '⏰', text: 'Cobro realizado a las 3:47 AM', sub: 'Hora inusual para esta tienda' },
+                    { icon: '📈', text: '6.4× mayor al promedio', sub: 'Mucho más alto de lo habitual' },
+                    { icon: '🔁', text: 'Cobro similar hace 2 horas', sub: '$287.500 en la misma tienda' },
+                  ].map((r, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#FAFBFC', borderRadius: 12, border: `1px solid ${T.border}` }}>
+                      <span style={{ fontSize: 18 }}>{r.icon}</span>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{r.text}</div>
+                        <div style={{ fontSize: 11, color: T.textLight, marginTop: 1 }}>{r.sub}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* CTA buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{
+                  height: 52, borderRadius: 14, background: T.red,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  cursor: 'pointer', boxShadow: `0 6px 18px ${T.red}44`,
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.19 12 19.79 19.79 0 0 1 1.1 3.43 2 2 0 0 1 3.08 1.25h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16Z"/></svg>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Verificar con mi banco</span>
+                </div>
+                <div style={{
+                  height: 52, borderRadius: 14, background: '#fff',
+                  border: `1.5px solid ${T.border}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  cursor: 'pointer',
+                }}>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: T.textMid }}>Ignorar alerta</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Past alert (dimmed) */}
+          <div style={{ background: T.card, borderRadius: 16, padding: '14px 16px', opacity: 0.6, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: T.greenLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon.check />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Alerta anterior · Rappi</div>
+              <div style={{ fontSize: 12, color: T.textLight }}>Resuelta · 19 abr, 2:30 PM</div>
+            </div>
+            <div style={{ fontSize: 13, color: T.green, fontWeight: 600 }}>Ignorada</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom nav */}
+      <div style={{
+        height: 60, background: T.card, borderTop: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-around',
+        padding: '0 8px', flexShrink: 0,
+      }}>
+        {[
+          { label: 'Inicio', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+          { label: 'Suscripciones', icon: <Icon.subscriptions /> },
+          { label: 'Alertas', active: true, icon: <Icon.alert /> },
+          { label: 'Perfil', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+        ].map((item, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '4px 16px', position: 'relative' }}>
+            <div style={{ color: item.active ? T.red : T.textLight }}>{item.icon}</div>
+            {item.active && <div style={{ position: 'absolute', top: 4, right: 14, width: 8, height: 8, borderRadius: 4, background: T.red, border: '2px solid white' }} />}
+            <div style={{ fontSize: 10, color: item.active ? T.red : T.textLight, fontWeight: item.active ? 600 : 400 }}>{item.label}</div>
+          </div>
+        ))}
+      </div>
+    </PhoneShell>
+  );
+}
+
+// ─── Root ─────────────────────────────────────────────────────
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection id="screens" title="FinWard — Android Mockups" subtitle="Toca cualquier artboard para ver en pantalla completa · Arrastra para reordenar">
+        <DCArtboard id="login" label="01 · Login" width={395} height={832}>
+          <LoginScreen />
+        </DCArtboard>
+        <DCArtboard id="dashboard" label="02 · Dashboard" width={395} height={832}>
+          <DashboardScreen />
+        </DCArtboard>
+        <DCArtboard id="subscriptions" label="03 · Suscripciones" width={395} height={832}>
+          <SubscriptionsScreen />
+        </DCArtboard>
+        <DCArtboard id="anomaly" label="04 · Alerta de Anomalía" width={395} height={832}>
+          <AnomalyScreen />
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+<!-- Tweaks panel -->
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accentBlue": "#4A6FA5",
+  "accentGreen": "#2E8B6A",
+  "username": "Carlos Rodríguez",
+  "totalSpent": "374.600"
+}/*EDITMODE-END*/;
+
+(function() {
+  let panel = null;
+
+  function buildPanel() {
+    panel = document.createElement('div');
+    panel.id = 'tweak-panel';
+    panel.style.cssText = `
+      position:fixed; bottom:24px; right:24px; z-index:9999;
+      background:#fff; border-radius:16px; padding:20px;
+      box-shadow:0 8px 40px rgba(0,0,0,0.18); width:240px;
+      font-family:'DM Sans',sans-serif; display:none;
+    `;
+    panel.innerHTML = `
+      <div style="font-size:14px;font-weight:700;color:#1A1D23;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
+        Tweaks
+        <span id="tweak-close" style="cursor:pointer;font-size:18px;color:#9AA0AD;">×</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:#5A6070;text-transform:uppercase;letter-spacing:0.4px;">Color principal</label>
+          <input type="color" id="tw-blue" value="${TWEAK_DEFAULTS.accentBlue}" style="width:100%;height:36px;border:1px solid #E8EAF0;border-radius:8px;cursor:pointer;margin-top:4px;"/>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:#5A6070;text-transform:uppercase;letter-spacing:0.4px;">Color acento verde</label>
+          <input type="color" id="tw-green" value="${TWEAK_DEFAULTS.accentGreen}" style="width:100%;height:36px;border:1px solid #E8EAF0;border-radius:8px;cursor:pointer;margin-top:4px;"/>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(panel);
+    document.getElementById('tweak-close').addEventListener('click', () => { panel.style.display = 'none'; });
+  }
+
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === '__activate_edit_mode') {
+      if (!panel) buildPanel();
+      panel.style.display = 'block';
+    }
+    if (e.data?.type === '__deactivate_edit_mode') {
+      if (panel) panel.style.display = 'none';
+    }
+  });
+
+  window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+})();
+</script>
+
+<div id="root"></div>
+</body>
+</html>
