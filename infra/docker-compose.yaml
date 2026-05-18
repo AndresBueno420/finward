@@ -37,5 +37,16 @@ services:
       - postgres
     restart: unless-stopped
 
+  ai:
+    build:
+      context: ../ai
+      dockerfile: Dockerfile
+    container_name: finward_ai
+    env_file:
+      - ../ai/.env
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
 volumes:
   finward_pgdata:

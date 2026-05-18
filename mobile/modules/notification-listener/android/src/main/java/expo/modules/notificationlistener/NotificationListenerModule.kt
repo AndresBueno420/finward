@@ -37,6 +37,17 @@ class NotificationListenerModule : Module() {
         Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
       )
     }
+
+    Function("getPendingNotifications") {
+      val context = appContext.reactContext
+        ?: return@Function emptyList<Map<String, Any>>()
+      NotificationStore.getAll(context)
+    }
+
+    Function("clearPendingNotifications") {
+      val context = appContext.reactContext ?: return@Function
+      NotificationStore.clear(context)
+    }
   }
 
   fun sendNotification(title: String, text: String, packageName: String) {

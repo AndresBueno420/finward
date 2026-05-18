@@ -81,6 +81,14 @@ cd mobile && npm start     # Expo dev server
 cd mobile && npm run android
 ```
 
+**Important:** The notification listener is a custom native Kotlin module — it cannot run in Expo Go. A Dev Build is required:
+```bash
+cd mobile && npx expo prebuild --platform android --clean  # generates android/ (run once or after module changes)
+cd mobile && npx expo run:android                          # compiles and installs the Dev Build
+```
+
+The API URL in `mobile/src/screens/LoginScreen.tsx` is hardcoded to a local-network IP (`const API_URL = 'http://10.23.149.225:8080'`). Update it to match the machine running the Go API before testing on a physical device.
+
 ## Environment Variables
 
 Loaded from `api/.env` (not committed). Required variables:
@@ -105,13 +113,17 @@ Defined in `api/cmd/api/main.go`:
 - `GET /ping` — health check
 - `POST /login` — returns JWT (24h, HS256); handler in `api/internal/handlers/auth.go`
 
+No JWT validation middleware exists yet. When adding protected endpoints, middleware to verify the `Authorization: Bearer <token>` header must be written and wired in.
+
+CORS is configured for `http://localhost:5173` only (frontend dev server). Mobile connects via local-network IP, not through the browser CORS path.
+
 ## Mobile Stack
 
 React Native 0.81 + Expo 54 + TypeScript. Runs on Android (physical device or emulator).
 
 **Auth flow:** `POST /login` → JWT stored in `AsyncStorage` under key `token` → navigate to Dashboard. `AppNavigator` manages the Login → Dashboard stack.
 
-**Notification listener:** Native Android module at `mobile/modules/notification-listener/` — captures bank push notifications to detect transactions.
+**Notification listener:** Native Android module at `mobile/modules/notification-listener/` — captures bank push notifications to detect transactions. The module requires the user to manually enable it in Android Settings → Apps → Special access → Notification access; it cannot be granted via a runtime permission dialog. The Kotlin service uses `@Volatile` on the module reference for thread safety (OS can call the service from a background thread).
 
 **Design tokens** (shared across screens, defined inline per screen — extract to `mobile/src/theme.ts` when adding a third screen):
 - Primary: `#4A6FA5` | Light: `#EEF2F9` | BG: `#F5F7FA` | Text: `#1A1D23`

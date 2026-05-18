@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import {
   addNotificationListener,
+  clearPendingNotifications,
+  getPendingNotifications,
   isNotificationServiceEnabled,
   NotificationEvent,
   openNotificationSettings,
@@ -62,6 +64,15 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     if (!hasPermission) return;
+
+    // Load notifications persisted while the app was closed, then clear the store
+    const pending = getPendingNotifications();
+    clearPendingNotifications();
+    if (pending.length > 0) {
+      setNotifications(pending.slice(0, 50));
+    }
+
+    // Subscribe for live events going forward
     const sub = addNotificationListener((event) => {
       setNotifications((prev) => [event, ...prev].slice(0, 50));
     });
@@ -118,7 +129,7 @@ export default function DashboardScreen() {
         ) : (
           <FlatList
             data={notifications}
-            keyExtractor={(_, i) => i.toString()}
+            keyExtractor={(item, i) => `${item.timestamp}-${i}`}
             contentContainerStyle={styles.list}
             ListHeaderComponent={
               <Text style={styles.sectionTitle}>
@@ -139,8 +150,11 @@ export default function DashboardScreen() {
                   <Text style={styles.txIconText}>
                     {item.packageName?.includes('bancolombia') ? '🏦'
                       : item.packageName?.includes('nequi') ? '💜'
-                      : item.packageName?.includes('nu') || item.packageName?.includes('nubank') ? '💜'
-                      : '📱'}
+                      : item.packageName?.includes('nu.production') ? '💜'
+                      : item.packageName?.includes('davivienda') || item.packageName?.includes('daviplata') ? '🔴'
+                      : item.packageName?.includes('bbva') ? '🔵'
+                      : item.packageName?.includes('bold') || item.packageName?.includes('rappi') ? '🟠'
+                      : '🏦'}
                   </Text>
                 </View>
                 <View style={styles.txInfo}>

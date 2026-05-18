@@ -14,6 +14,8 @@ type Events = {
 declare class NotificationListenerNativeModule extends NativeModule<Events> {
   isNotificationServiceEnabled(): boolean;
   openNotificationSettings(): void;
+  getPendingNotifications(): NotificationEvent[];
+  clearPendingNotifications(): void;
 }
 
 const listenerModule =
@@ -32,4 +34,12 @@ export function addNotificationListener(
   listener: (event: NotificationEvent) => void
 ) {
   return emitter.addListener('onNotificationReceived', listener);
+}
+
+export function getPendingNotifications(): NotificationEvent[] {
+  return listenerModule.getPendingNotifications();
+}
+
+export function clearPendingNotifications(): void {
+  listenerModule.clearPendingNotifications();
 }
