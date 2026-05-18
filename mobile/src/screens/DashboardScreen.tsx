@@ -1,10 +1,11 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import {
   AppState,
-  FlatList,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,7 +14,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   addNotificationListener,
-  clearPendingNotifications,
   getPendingNotifications,
   isNotificationServiceEnabled,
   NotificationEvent,
@@ -21,9 +21,10 @@ import {
 } from 'notification-listener';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
+const API_URL = 'http://192.168.86.241:8080';
+
 const T = {
   blue:      '#4A6FA5',
-  blueLight: '#EEF2F9',
   bg:        '#F5F7FA',
   card:      '#FFFFFF',
   text:      '#1A1D23',
@@ -34,174 +35,239 @@ const T = {
   red:       '#D94F4F',
 };
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
+const CATEGORY_COLOR: Record<string, string> = {
+  'Alimentación':    '#F97316',
+  'Transporte':      '#3B82F6',
+  'Entretenimiento': '#8B5CF6',
+  'Suscripciones':   '#EC4899',
+  'Salud':           '#10B981',
+  'Ingreso':         '#2E8B6A',
+  'Otros':           '#9AA0AD',
+};
 
-const NAV_TABS: { label: string; icon: keyof typeof Ionicons.glyphMap; active: boolean }[] = [
-  { label: 'Inicio',        icon: 'home-outline',          active: false },
-  { label: 'Suscripciones', icon: 'repeat-outline',        active: false },
-  { label: 'Alertas',       icon: 'notifications',         active: true  },
-  { label: 'Perfil',        icon: 'person-outline',        active: false },
-];
+const CATEGORY_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
+  'Alimentación':    'restaurant-outline',
+  'Transporte':      'car-outline',
+  'Entretenimiento': 'film-outline',
+  'Suscripciones':   'repeat-outline',
+  'Salud':           'medkit-outline',
+  'Ingreso':         'arrow-down-circle-outline',
+  'Otros':           'grid-outline',
+};
 
-function getBankIcon(packageName: string): { name: keyof typeof Ionicons.glyphMap; color: string } {
-  if (packageName.includes('bancolombia')) return { name: 'business-outline',   color: '#FFB800' };
-  if (packageName.includes('nequi'))       return { name: 'wallet-outline',     color: '#6C1D8E' };
-  if (packageName.includes('nu.product'))  return { name: 'card-outline',       color: '#820AD1' };
-  if (packageName.includes('davivienda') || packageName.includes('daviplata'))
-                                           return { name: 'card-outline',       color: '#D40000' };
-  if (packageName.includes('bbva'))        return { name: 'card-outline',       color: '#004C9E' };
-  if (packageName.includes('bold') || packageName.includes('rappi'))
-                                           return { name: 'storefront-outline', color: '#FF6B00' };
+function categoryColor(name: string): string {
+  return CATEGORY_COLOR[name] ?? T.blue;
+}
+function categoryIcon(name: string): keyof typeof Ionicons.glyphMap {
+  return CATEGORY_ICON[name] ?? 'ellipse-outline';
+}
+function formatCOP(amount: number): string {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency', currency: 'COP',
+    minimumFractionDigits: 0, maximumFractionDigits: 0,
+  }).format(amount);
+}
+function formatFecha(iso: string): string {
+  const date = new Date(iso);
+  const diff = Math.floor((Date.now() - date.getTime()) / 86_400_000);
+  if (diff === 0) return 'Hoy';
+  if (diff === 1) return 'Ayer';
+  if (diff < 7)  return `Hace ${diff} días`;
+  return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+}
+
+type TransactionItem = {
+  id: string; comercio: string; categoria: string;
+  tipo: string; monto: number; divisa: string; fecha: string;
+};
+
+function getBankIcon(pkg: string): { name: keyof typeof Ionicons.glyphMap; color: string } {
+  if (pkg.includes('bancolombia'))                            return { name: 'business-outline',   color: '#FFB800' };
+  if (pkg.includes('nequi'))                                  return { name: 'wallet-outline',     color: '#6C1D8E' };
+  if (pkg.includes('nu.product'))                             return { name: 'card-outline',       color: '#820AD1' };
+  if (pkg.includes('davivienda') || pkg.includes('daviplata'))return { name: 'card-outline',       color: '#D40000' };
+  if (pkg.includes('bbva'))                                   return { name: 'card-outline',       color: '#004C9E' };
+  if (pkg.includes('bold') || pkg.includes('rappi'))          return { name: 'storefront-outline', color: '#FF6B00' };
   return { name: 'card-outline', color: T.blue };
 }
 
+type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
+
+const NAV_TABS: { label: string; icon: keyof typeof Ionicons.glyphMap; active: boolean }[] = [
+  { label: 'Inicio',          icon: 'home-outline',   active: false },
+  { label: 'Suscripciones',   icon: 'repeat-outline', active: false },
+  { label: 'Notificaciones',  icon: 'notifications',  active: true  },
+  { label: 'Perfil',          icon: 'person-outline', active: false },
+];
+
 export default function DashboardScreen({ navigation }: Props) {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [notifications, setNotifications] = useState<NotificationEvent[]>([]);
+  const [hasPermission,  setHasPermission]  = useState<boolean | null>(null);
+  const [notifications,  setNotifications]  = useState<NotificationEvent[]>([]);
+  const [dbTransactions, setDbTransactions] = useState<TransactionItem[]>([]);
 
   const checkPermission = useCallback(() => {
-    if (Platform.OS === 'android') {
-      setHasPermission(isNotificationServiceEnabled());
-    } else {
-      setHasPermission(false);
-    }
+    if (Platform.OS === 'android') setHasPermission(isNotificationServiceEnabled());
+    else setHasPermission(false);
   }, []);
 
   useEffect(() => {
     checkPermission();
-    const sub = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active') checkPermission();
-    });
+    const sub = AppState.addEventListener('change', s => { if (s === 'active') checkPermission(); });
     return () => sub.remove();
   }, [checkPermission]);
 
+  // Load from persistent store on every mount — intentionally NOT clearing so
+  // notifications survive tab switches. The service always writes to the store,
+  // so reloading on remount gives the full history.
   useEffect(() => {
     if (!hasPermission) return;
-
-    const pending = getPendingNotifications();
-    clearPendingNotifications();
-    if (pending.length > 0) setNotifications(pending.slice(0, 50));
+    const stored = getPendingNotifications();
+    if (stored.length > 0) setNotifications(stored.slice(0, 50));
 
     const sub = addNotificationListener((event) => {
-      setNotifications((prev) => [event, ...prev].slice(0, 50));
+      setNotifications(prev => [event, ...prev].slice(0, 50));
     });
     return () => sub.remove();
   }, [hasPermission]);
+
+  const fetchTransactions = useCallback(async () => {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) return;
+    try {
+      const now = new Date();
+      const res = await fetch(
+        `${API_URL}/summary?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (res.ok) {
+        const body = await res.json();
+        setDbTransactions(body.transacciones ?? []);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
 
   function handleTabPress(label: string) {
     if (label === 'Inicio') navigation.replace('FinancialDashboard');
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={s.safeArea}>
+      <View style={s.container}>
 
         {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
+        <View style={s.header}>
+          <View style={s.headerTop}>
             <View>
-              <Text style={styles.headerGreeting}>Buenos días,</Text>
-              <Text style={styles.headerName}>Alertas</Text>
+              <Text style={s.greeting}>Actividad</Text>
+              <Text style={s.title}>Notificaciones</Text>
             </View>
-            <View style={styles.bellWrap}>
+            <View style={s.bellWrap}>
               <Ionicons name="notifications-outline" size={20} color="#fff" />
-              {hasPermission && notifications.length > 0 && (
-                <View style={styles.bellDot} />
-              )}
+              {hasPermission && notifications.length > 0 && <View style={s.bellDot} />}
             </View>
           </View>
 
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>NOTIFICACIONES CAPTURADAS</Text>
-            <Text style={styles.summaryCount}>{notifications.length}</Text>
-            <Text style={styles.summaryHint}>
-              {hasPermission ? 'Escuchando notificaciones bancarias' : 'Permiso pendiente'}
-            </Text>
+          <View style={s.statsRow}>
+            <View style={s.statChip}>
+              <Text style={s.statValue}>{dbTransactions.length}</Text>
+              <Text style={s.statLabel}>Procesadas</Text>
+            </View>
+            <View style={s.statDivider} />
+            <View style={s.statChip}>
+              <Text style={s.statValue}>{notifications.length}</Text>
+              <Text style={s.statLabel}>Capturadas</Text>
+            </View>
           </View>
         </View>
 
         {/* Body */}
-        {hasPermission === null ? (
-          <View style={styles.centered}>
-            <Text style={styles.hint}>Verificando permisos…</Text>
-          </View>
-        ) : !hasPermission ? (
-          <View style={styles.centered}>
-            <View style={styles.permCard}>
-              <View style={styles.permIconWrap}>
-                <Ionicons name="notifications-circle-outline" size={52} color={T.blue} />
-              </View>
-              <Text style={styles.permTitle}>Permiso requerido</Text>
-              <Text style={styles.permBody}>
-                FinWard necesita acceso a las notificaciones para detectar
-                movimientos bancarios automáticamente.
+        <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+
+          {/* — Movimientos procesados — */}
+          <Text style={s.sectionTitle}>MOVIMIENTOS PROCESADOS</Text>
+          {dbTransactions.length === 0 ? (
+            <View style={s.emptyCard}>
+              <Ionicons name="receipt-outline" size={32} color={T.textLight} />
+              <Text style={s.emptyText}>Sin movimientos procesados este mes</Text>
+            </View>
+          ) : (
+            <View style={s.list}>
+              {dbTransactions.map((tx, i) => {
+                const isIngreso = tx.tipo === 'ingreso';
+                const color = categoryColor(tx.categoria);
+                return (
+                  <View key={tx.id} style={[s.row, i > 0 && s.rowBorder]}>
+                    <View style={[s.iconWrap, { backgroundColor: color + '18' }]}>
+                      <Ionicons name={categoryIcon(tx.categoria)} size={18} color={color} />
+                    </View>
+                    <View style={s.info}>
+                      <Text style={s.rowTitle} numberOfLines={1}>{tx.comercio}</Text>
+                      <Text style={s.rowMeta}>{tx.categoria} · {formatFecha(tx.fecha)}</Text>
+                    </View>
+                    <Text style={[s.amount, { color: isIngreso ? T.green : T.red }]}>
+                      {isIngreso ? '+' : '-'}{formatCOP(tx.monto)}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* — Notificaciones capturadas — */}
+          <Text style={[s.sectionTitle, s.sectionGap]}>NOTIFICACIONES CAPTURADAS</Text>
+          {hasPermission === null ? (
+            <View style={s.emptyCard}>
+              <Text style={s.emptyText}>Verificando permisos…</Text>
+            </View>
+          ) : !hasPermission ? (
+            <View style={s.permCard}>
+              <Ionicons name="notifications-circle-outline" size={44} color={T.blue} style={{ marginBottom: 12 }} />
+              <Text style={s.permTitle}>Permiso requerido</Text>
+              <Text style={s.permBody}>
+                FinWard necesita acceso a las notificaciones para detectar movimientos bancarios.
               </Text>
-              <TouchableOpacity style={styles.permButton} onPress={openNotificationSettings} activeOpacity={0.85}>
-                <Text style={styles.permButtonText}>Conceder acceso</Text>
+              <TouchableOpacity style={s.permBtn} onPress={openNotificationSettings} activeOpacity={0.85}>
+                <Text style={s.permBtnText}>Conceder acceso</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        ) : (
-          <FlatList
-            data={notifications}
-            keyExtractor={(item, i) => `${item.timestamp}-${i}`}
-            contentContainerStyle={styles.list}
-            ListHeaderComponent={
-              <Text style={styles.sectionTitle}>
-                {notifications.length === 0 ? 'Sin notificaciones aún' : 'Notificaciones recientes'}
+          ) : notifications.length === 0 ? (
+            <View style={s.emptyCard}>
+              <Ionicons name="mail-outline" size={32} color={T.textLight} />
+              <Text style={s.emptyText}>
+                Esperando notificaciones bancarias…{'\n'}Realiza una transacción para verla aquí.
               </Text>
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyCard}>
-                <Ionicons name="mail-outline" size={36} color={T.textLight} />
-                <Text style={styles.emptyText}>
-                  Esperando notificaciones bancarias…{'\n'}Realiza una transacción para verla aquí.
-                </Text>
-              </View>
-            }
-            renderItem={({ item, index }) => {
-              const { name: iconName, color: iconColor } = getBankIcon(item.packageName ?? '');
-              return (
-                <View style={[styles.txCard, index > 0 && styles.txCardBorder]}>
-                  <View style={[styles.txIconWrap, { backgroundColor: iconColor + '18' }]}>
-                    <Ionicons name={iconName} size={20} color={iconColor} />
+            </View>
+          ) : (
+            <View style={s.list}>
+              {notifications.map((item, i) => {
+                const { name: icon, color } = getBankIcon(item.packageName ?? '');
+                return (
+                  <View key={`${item.timestamp}-${i}`} style={[s.row, i > 0 && s.rowBorder]}>
+                    <View style={[s.iconWrap, { backgroundColor: color + '18' }]}>
+                      <Ionicons name={icon} size={18} color={color} />
+                    </View>
+                    <View style={s.info}>
+                      <Text style={s.rowTitle} numberOfLines={1}>{item.title || 'Sin título'}</Text>
+                      <Text style={s.rowMeta} numberOfLines={1}>{item.packageName}</Text>
+                    </View>
+                    <View style={s.notifRight}>
+                      <Text style={s.notifText} numberOfLines={2}>{item.text || '—'}</Text>
+                    </View>
                   </View>
-                  <View style={styles.txInfo}>
-                    <Text style={styles.txTitle} numberOfLines={1}>
-                      {item.title || 'Sin título'}
-                    </Text>
-                    <Text style={styles.txMeta} numberOfLines={1}>
-                      {item.packageName}
-                    </Text>
-                  </View>
-                  <View style={styles.txRight}>
-                    <Text style={styles.txText} numberOfLines={2}>
-                      {item.text || '—'}
-                    </Text>
-                  </View>
-                </View>
-              );
-            }}
-          />
-        )}
+                );
+              })}
+            </View>
+          )}
+        </ScrollView>
 
         {/* Bottom nav */}
-        <View style={styles.bottomNav}>
-          {NAV_TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.label}
-              style={styles.navTab}
-              onPress={() => handleTabPress(tab.label)}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={tab.icon}
-                size={22}
-                color={tab.active ? T.blue : T.textLight}
-              />
-              <Text style={[styles.navLabel, tab.active && styles.navLabelActive]}>
-                {tab.label}
-              </Text>
+        <View style={s.bottomNav}>
+          {NAV_TABS.map(tab => (
+            <TouchableOpacity key={tab.label} style={s.navTab} onPress={() => handleTabPress(tab.label)} activeOpacity={0.7}>
+              <Ionicons name={tab.icon} size={22} color={tab.active ? T.blue : T.textLight} />
+              <Text style={[s.navLabel, tab.active && s.navLabelActive]}>{tab.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -210,183 +276,96 @@ export default function DashboardScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   safeArea:  { flex: 1, backgroundColor: T.blue },
   container: { flex: 1, backgroundColor: T.bg },
 
-  /* Header */
   header: {
     backgroundColor: T.blue,
     paddingHorizontal: 24,
     paddingTop: 16,
-    paddingBottom: 32,
+    paddingBottom: 24,
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  headerGreeting: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.75)',
-    marginBottom: 2,
-  },
-  headerName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-  },
+  greeting: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginBottom: 2 },
+  title:    { fontSize: 20, fontWeight: '700', color: '#fff' },
   bellWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
   bellDot: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#FF6B6B',
-    borderWidth: 2,
-    borderColor: T.blue,
+    position: 'absolute', top: 6, right: 6,
+    width: 10, height: 10, borderRadius: 5,
+    backgroundColor: '#FF6B6B', borderWidth: 2, borderColor: T.blue,
   },
-  summaryCard: {
+  statsRow: {
+    flexDirection: 'row',
     backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 20,
-    padding: 18,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.18)',
+    overflow: 'hidden',
   },
-  summaryLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.7)',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  summaryCount: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -1,
-  },
-  summaryHint: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.65)',
-    marginTop: 4,
-  },
+  statChip:    { flex: 1, alignItems: 'center', paddingVertical: 12 },
+  statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginVertical: 8 },
+  statValue:   { fontSize: 22, fontWeight: '700', color: '#fff', letterSpacing: -0.5 },
+  statLabel:   { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
 
-  /* Body states */
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  hint: { fontSize: 15, color: T.textLight, textAlign: 'center' },
+  scroll:        { flex: 1 },
+  scrollContent: { padding: 20, paddingBottom: 12 },
 
-  /* Permission card */
-  permCard: {
-    backgroundColor: T.card,
-    borderRadius: 20,
-    padding: 28,
-    alignItems: 'center',
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 4,
+  sectionTitle: {
+    fontSize: 11, fontWeight: '700', color: T.textLight,
+    letterSpacing: 0.5, marginBottom: 10,
   },
-  permIconWrap: { marginBottom: 16 },
-  permTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: T.text,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  permBody: {
-    fontSize: 14,
-    color: T.textMid,
-    textAlign: 'center',
-    lineHeight: 21,
-    marginBottom: 24,
-  },
-  permButton: {
-    backgroundColor: T.blue,
-    paddingVertical: 14,
-    paddingHorizontal: 36,
-    borderRadius: 14,
-    shadowColor: T.blue,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.27,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  permButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  sectionGap: { marginTop: 20 },
 
-  /* Notification list */
-  list:         { padding: 20, paddingBottom: 8 },
-  sectionTitle: { fontSize: 15, fontWeight: '600', color: T.text, marginBottom: 12 },
+  list: {
+    backgroundColor: T.card, borderRadius: 16, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  },
+  row:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 12 },
+  rowBorder: { borderTopWidth: 1, borderTopColor: T.border },
+  iconWrap:  { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  info:      { flex: 1, minWidth: 0 },
+  rowTitle:  { fontSize: 14, fontWeight: '600', color: T.text },
+  rowMeta:   { fontSize: 11, color: T.textLight, marginTop: 2 },
+  amount:    { fontSize: 14, fontWeight: '700' },
+  notifRight:{ maxWidth: 110, alignItems: 'flex-end' },
+  notifText: { fontSize: 12, color: T.textMid, textAlign: 'right' },
+
   emptyCard: {
-    backgroundColor: T.card,
-    borderRadius: 20,
-    padding: 32,
-    alignItems: 'center',
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 2,
+    backgroundColor: T.card, borderRadius: 16, padding: 28,
+    alignItems: 'center', gap: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
-  emptyText: { fontSize: 14, color: T.textMid, textAlign: 'center', lineHeight: 22 },
-  txCard: {
-    backgroundColor: T.card,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  txCardBorder: { borderTopWidth: 1, borderTopColor: T.border },
-  txIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  txInfo:  { flex: 1, minWidth: 0 },
-  txTitle: { fontSize: 14, fontWeight: '600', color: T.text },
-  txMeta:  { fontSize: 11, color: T.textLight, marginTop: 2 },
-  txRight: { maxWidth: 120, alignItems: 'flex-end' },
-  txText:  { fontSize: 12, color: T.textMid, textAlign: 'right' },
+  emptyText: { fontSize: 13, color: T.textMid, textAlign: 'center', lineHeight: 20 },
 
-  /* Bottom nav */
+  permCard: {
+    backgroundColor: T.card, borderRadius: 16, padding: 24, alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 16, elevation: 4,
+  },
+  permTitle: { fontSize: 17, fontWeight: '700', color: T.text, marginBottom: 8, textAlign: 'center' },
+  permBody:  { fontSize: 13, color: T.textMid, textAlign: 'center', lineHeight: 19, marginBottom: 20 },
+  permBtn:   { backgroundColor: T.blue, paddingVertical: 12, paddingHorizontal: 28, borderRadius: 12 },
+  permBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+
   bottomNav: {
-    height: 60,
-    backgroundColor: T.card,
-    borderTopWidth: 1,
-    borderTopColor: T.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 8,
+    height: 60, backgroundColor: T.card,
+    borderTopWidth: 1, borderTopColor: T.border,
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-around', paddingHorizontal: 8,
   },
-  navTab: {
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
+  navTab:         { alignItems: 'center', gap: 3, paddingHorizontal: 12, paddingVertical: 4 },
   navLabel:       { fontSize: 10, color: T.textLight },
   navLabelActive: { color: T.blue, fontWeight: '600' },
 });

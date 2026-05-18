@@ -106,10 +106,10 @@ type SummaryData = {
 type Props = NativeStackScreenProps<RootStackParamList, 'FinancialDashboard'>;
 
 const NAV_TABS: { label: string; icon: keyof typeof Ionicons.glyphMap; active: boolean }[] = [
-  { label: 'Inicio',        icon: 'home',                  active: true  },
-  { label: 'Suscripciones', icon: 'repeat-outline',        active: false },
-  { label: 'Alertas',       icon: 'notifications-outline', active: false },
-  { label: 'Perfil',        icon: 'person-outline',        active: false },
+  { label: 'Inicio',          icon: 'home',                  active: true  },
+  { label: 'Suscripciones',   icon: 'repeat-outline',        active: false },
+  { label: 'Notificaciones',  icon: 'notifications-outline', active: false },
+  { label: 'Perfil',          icon: 'person-outline',        active: false },
 ];
 
 export default function FinancialDashboardScreen({ navigation }: Props) {
@@ -152,11 +152,11 @@ export default function FinancialDashboardScreen({ navigation }: Props) {
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
 
   function handleTabPress(label: string) {
-    if (label === 'Alertas') navigation.navigate('Dashboard');
+    if (label === 'Notificaciones') navigation.navigate('Dashboard');
   }
 
-  const gastos = data?.por_categoria.filter(c => c.tipo === 'gasto') ?? [];
-  const txs    = data?.transacciones ?? [];
+  const gastos  = data?.por_categoria.filter(c => c.tipo === 'gasto') ?? [];
+  const balance = (data?.total_ingresos ?? 0) - (data?.total_gastos ?? 0);
 
   return (
     <SafeAreaView style={s.safe}>
@@ -185,19 +185,18 @@ export default function FinancialDashboardScreen({ navigation }: Props) {
               </View>
             </View>
 
-            <View style={s.summaryCard}>
-              <Text style={s.summaryLabel}>GASTOS DEL MES</Text>
-              <Text style={s.summaryAmount}>
-                {formatCOP(data?.total_gastos ?? 0)}
-              </Text>
-              {(data?.total_ingresos ?? 0) > 0 && (
-                <View style={s.ingresoRow}>
-                  <Ionicons name="arrow-down-outline" size={12} color={T.green} />
-                  <Text style={s.ingresoText}>
-                    {formatCOP(data!.total_ingresos)} recibidos
-                  </Text>
-                </View>
-              )}
+            <View style={s.headerStatsRow}>
+              <View style={s.headerStatCard}>
+                <Text style={s.headerStatLabel}>GASTOS</Text>
+                <Text style={s.headerStatAmount}>{formatCOP(data?.total_gastos ?? 0)}</Text>
+              </View>
+              <View style={s.headerStatDivider} />
+              <View style={s.headerStatCard}>
+                <Text style={s.headerStatLabel}>INGRESOS</Text>
+                <Text style={[s.headerStatAmount, { color: '#6EE7B7' }]}>
+                  {formatCOP(data?.total_ingresos ?? 0)}
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -217,10 +216,10 @@ export default function FinancialDashboardScreen({ navigation }: Props) {
               </View>
             ) : (
               <>
-                {/* CATEGORÍAS */}
-                {gastos.length > 0 && (
+                {/* GASTOS POR CATEGORÍA */}
+                {gastos.length > 0 ? (
                   <>
-                    <Text style={s.sectionTitle}>POR CATEGORÍA</Text>
+                    <Text style={s.sectionTitle}>GASTOS POR CATEGORÍA</Text>
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
@@ -249,45 +248,40 @@ export default function FinancialDashboardScreen({ navigation }: Props) {
                       })}
                     </ScrollView>
                   </>
-                )}
-
-                {/* TRANSACCIONES */}
-                <Text style={s.sectionTitle}>
-                  {txs.length > 0 ? 'ÚLTIMOS MOVIMIENTOS' : 'MOVIMIENTOS DEL MES'}
-                </Text>
-
-                {txs.length === 0 ? (
+                ) : (
                   <View style={s.emptyCard}>
                     <Ionicons name="receipt-outline" size={36} color={T.textLight} />
                     <Text style={s.emptyText}>
-                      Sin movimientos procesados este mes.{'\n'}
-                      Las transacciones aparecerán aquí una vez capturadas.
+                      Sin gastos registrados este mes.
                     </Text>
                   </View>
-                ) : (
-                  <View style={s.txList}>
-                    {txs.map((tx, i) => {
-                      const isIngreso = tx.tipo === 'ingreso';
-                      const color     = categoryColor(tx.categoria);
-                      return (
-                        <View key={tx.id} style={[s.txRow, i > 0 && s.txRowBorder]}>
-                          <View style={[s.txIconWrap, { backgroundColor: color + '18' }]}>
-                            <Ionicons name={categoryIcon(tx.categoria)} size={18} color={color} />
-                          </View>
-                          <View style={s.txInfo}>
-                            <Text style={s.txComercio} numberOfLines={1}>{tx.comercio}</Text>
-                            <Text style={s.txMeta}>
-                              {tx.categoria} · {formatFecha(tx.fecha)}
-                            </Text>
-                          </View>
-                          <Text style={[s.txMonto, { color: isIngreso ? T.green : T.red }]}>
-                            {isIngreso ? '+' : '-'}{formatCOP(tx.monto)}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
                 )}
+
+                {/* BALANCE */}
+                <Text style={[s.sectionTitle, { marginTop: 4 }]}>BALANCE DEL MES</Text>
+                <View style={s.balanceCard}>
+                  <View style={s.balanceRow}>
+                    <View style={[s.balanceDot, { backgroundColor: T.red }]} />
+                    <Text style={s.balanceLabel}>Gastos</Text>
+                    <Text style={[s.balanceValue, { color: T.red }]}>
+                      -{formatCOP(data?.total_gastos ?? 0)}
+                    </Text>
+                  </View>
+                  <View style={s.balanceRow}>
+                    <View style={[s.balanceDot, { backgroundColor: T.green }]} />
+                    <Text style={s.balanceLabel}>Ingresos</Text>
+                    <Text style={[s.balanceValue, { color: T.green }]}>
+                      +{formatCOP(data?.total_ingresos ?? 0)}
+                    </Text>
+                  </View>
+                  <View style={s.balanceSeparator} />
+                  <View style={s.balanceRow}>
+                    <Text style={s.balanceTotalLabel}>Resultado</Text>
+                    <Text style={[s.balanceTotalValue, { color: balance >= 0 ? T.green : T.red }]}>
+                      {balance >= 0 ? '+' : ''}{formatCOP(balance)}
+                    </Text>
+                  </View>
+                </View>
               </>
             )}
           </View>
@@ -357,36 +351,36 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  /* Summary card */
-  summaryCard: {
+  /* Header stats */
+  headerStatsRow: {
+    flexDirection: 'row',
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: 18,
-    padding: 18,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.18)',
+    overflow: 'hidden',
   },
-  summaryLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.65)',
+  headerStatCard: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  headerStatDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginVertical: 10,
+  },
+  headerStatLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
     letterSpacing: 0.5,
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  summaryAmount: {
-    fontSize: 34,
+  headerStatAmount: {
+    fontSize: 20,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -1,
-  },
-  ingresoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 6,
-  },
-  ingresoText: {
-    fontSize: 13,
-    color: T.green,
-    fontWeight: '500',
+    letterSpacing: -0.5,
   },
 
   /* Body */
@@ -458,51 +452,52 @@ const s = StyleSheet.create({
   barFill: { height: 4, borderRadius: 2 },
   categoryPct: { fontSize: 11, fontWeight: '600' },
 
-  /* Transaction list */
-  txList: {
+  /* Balance card */
+  balanceCard: {
     marginHorizontal: 20,
     backgroundColor: T.card,
     borderRadius: 16,
-    overflow: 'hidden',
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
     marginBottom: 8,
+    gap: 10,
   },
-  txRow: {
+  balanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    gap: 12,
+    gap: 8,
   },
-  txRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: T.border,
+  balanceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  txIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
+  balanceLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: T.textMid,
   },
-  txInfo:    { flex: 1, minWidth: 0 },
-  txComercio: {
+  balanceValue: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  balanceSeparator: {
+    height: 1,
+    backgroundColor: T.border,
+    marginVertical: 2,
+  },
+  balanceTotalLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
     color: T.text,
   },
-  txMeta: {
-    fontSize: 11,
-    color: T.textLight,
-    marginTop: 2,
-  },
-  txMonto: {
-    fontSize: 14,
+  balanceTotalValue: {
+    fontSize: 15,
     fontWeight: '700',
   },
 
