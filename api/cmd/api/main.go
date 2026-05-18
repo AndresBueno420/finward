@@ -58,11 +58,17 @@ func main() {
 	}
 	fmt.Println("Conexión exitosa a PostgreSQL")
 
+	aiURL := os.Getenv("AI_URL")
+	if aiURL == "" {
+		aiURL = "http://localhost:8001"
+	}
+
 	userRepo := repository.NewUserRepository(dbPool)
 	txRepo := repository.NewTransactionRepository(dbPool)
 
 	authHandler := handlers.NewAuthHandler(userRepo)
 	dashboardHandler := handlers.NewDashboardHandler(txRepo)
+	notificationHandler := handlers.NewNotificationHandler(txRepo, aiURL)
 
 	// 3. Configurar el servidor HTTP con Gin
 	r := gin.Default()
@@ -92,6 +98,7 @@ func main() {
 	protected.Use(middleware.AuthMiddleware())
 	{
 		protected.GET("/summary", dashboardHandler.GetSummary)
+		protected.POST("/notifications/process", notificationHandler.Process)
 	}
 
 	// 4. Arrancar el servidor

@@ -116,6 +116,24 @@ export default function DashboardScreen({ navigation }: Props) {
     return () => sub.remove();
   }, [checkPermission]);
 
+  const sendNotificationToApi = useCallback(async (event: NotificationEvent) => {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) return;
+    try {
+      await fetch(`${API_URL}/notifications/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: event.title ?? '',
+          text: event.text ?? '',
+          package_name: event.packageName ?? '',
+          timestamp: event.timestamp ?? Date.now(),
+        }),
+      });
+      fetchTransactions();
+    } catch {}
+  }, [fetchTransactions]);
+
   // Load from persistent store on every mount — intentionally NOT clearing so
   // notifications survive tab switches. The service always writes to the store,
   // so reloading on remount gives the full history.
@@ -126,9 +144,10 @@ export default function DashboardScreen({ navigation }: Props) {
 
     const sub = addNotificationListener((event) => {
       setNotifications(prev => [event, ...prev].slice(0, 50));
+      sendNotificationToApi(event);
     });
     return () => sub.remove();
-  }, [hasPermission]);
+  }, [hasPermission, sendNotificationToApi]);
 
   const fetchTransactions = useCallback(async () => {
     const token = await AsyncStorage.getItem('token');

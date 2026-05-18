@@ -11,6 +11,7 @@ import (
 
 type TransactionRepository interface {
 	GetMonthlySummary(ctx context.Context, userID string, month time.Time) (*domain.SummaryResponse, error)
+	SaveTransaction(ctx context.Context, tx domain.NewTransaction) error
 }
 
 type postgresTransactionRepository struct {
@@ -110,4 +111,41 @@ func (r *postgresTransactionRepository) GetMonthlySummary(ctx context.Context, u
 		PorCategoria:  categories,
 		Transacciones: transactions,
 	}, nil
+}
+
+func (r *postgresTransactionRepository) SaveTransaction(ctx context.Context, tx domain.NewTransaction) error {
+	var merchantID *string
+	var mid string
+	err := r.db.QueryRow(ctx,
+		`SELECT id FROM merchants WHERE raw_name = $1 LIMIT 1`,
+		tx.MerchantRaw,
+	).Scan(&mid)
+	if err != nil {
+		if err := r.db.QueryRow(ctx,
+			`INSERT INTO merchants (raw_name, clean_name) VALUES ($1, $2) RETURNING id`,
+			tx.MerchantRaw, tx.MerchantClean,
+		).Scan(&mid); err != nil {
+			return err
+		}
+	}
+	merchantID = &mid
+
+	var categoryID *string
+	var cid string
+	if err := r.db.QueryRow(ctx,
+		`SELECT id FROM categories WHERE name = $1 LIMIT 1`,
+		tx.CategoryName,
+	).Scan(&cid); err == nil {
+		categoryID = &cid
+	}
+
+	_, err = r.db.Exec(ctx,
+		`INSERT INTO transactions
+			(user_id, merchant_id, category_id, amount, currency, date, raw_notification_text, status, is_subscription)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, 'processed', $8)`,
+		tx.UserID, merchantID, categoryID,
+		tx.Amount, tx.Currency, tx.Date,
+		tx.RawNotificationText, tx.IsSubscription,
+	)
+	return err
 }
