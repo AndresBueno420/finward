@@ -3,6 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   AppState,
   Platform,
   ScrollView,
@@ -14,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   addNotificationListener,
+  clearPendingNotifications,
   getPendingNotifications,
   isNotificationServiceEnabled,
   NotificationEvent,
@@ -78,18 +81,48 @@ function formatFecha(iso: string): string {
 
 type TransactionItem = {
   id: string; comercio: string; categoria: string;
-  tipo: string; monto: number; divisa: string; fecha: string;
+  tipo: string; monto: number; divisa: string; fecha: string; banco: string;
 };
 
-function getBankIcon(pkg: string): { name: keyof typeof Ionicons.glyphMap; color: string } {
-  if (pkg.includes('bancolombia'))                            return { name: 'business-outline',   color: '#FFB800' };
-  if (pkg.includes('nequi'))                                  return { name: 'wallet-outline',     color: '#6C1D8E' };
-  if (pkg.includes('nu.product'))                             return { name: 'card-outline',       color: '#820AD1' };
-  if (pkg.includes('davivienda') || pkg.includes('daviplata'))return { name: 'card-outline',       color: '#D40000' };
-  if (pkg.includes('bbva'))                                   return { name: 'card-outline',       color: '#004C9E' };
-  if (pkg.includes('bold') || pkg.includes('rappi'))          return { name: 'storefront-outline', color: '#FF6B00' };
-  return { name: 'card-outline', color: T.blue };
+type BankMeta = { name: keyof typeof Ionicons.glyphMap; color: string; label: string };
+function getBankMeta(pkg: string): BankMeta {
+  if (pkg.includes('bancolombia'))                             return { name: 'business-outline',   color: '#FFB800', label: 'Bancolombia' };
+  if (pkg.includes('nequi'))                                   return { name: 'wallet-outline',     color: '#6C1D8E', label: 'Nequi' };
+  if (pkg.includes('nu.production') || pkg.includes('nu.product')) return { name: 'card-outline',  color: '#820AD1', label: 'Nu' };
+  if (pkg.includes('daviplata'))                               return { name: 'card-outline',       color: '#D40000', label: 'Daviplata' };
+  if (pkg.includes('davivienda'))                              return { name: 'card-outline',       color: '#D40000', label: 'Davivienda' };
+  if (pkg.includes('bbva'))                                    return { name: 'card-outline',       color: '#004C9E', label: 'BBVA' };
+  if (pkg.includes('rappi.bank'))                              return { name: 'card-outline',       color: '#FF6B00', label: 'RappiBank' };
+  if (pkg.includes('rappi'))                                   return { name: 'storefront-outline', color: '#FF6B00', label: 'Rappi' };
+  if (pkg.includes('bold'))                                    return { name: 'storefront-outline', color: '#FF6B00', label: 'Bold' };
+  if (pkg.includes('lulobank'))                                return { name: 'card-outline',       color: '#00C896', label: 'Lulo Bank' };
+  if (pkg.includes('scotiabank') || pkg.includes('colpatria')) return { name: 'card-outline',       color: '#EC0000', label: 'Scotiabank' };
+  if (pkg.includes('bogota'))                                  return { name: 'card-outline',       color: '#005CA9', label: 'Banco de Bogotá' };
+  if (pkg.includes('avvillas'))                                return { name: 'card-outline',       color: '#F7941D', label: 'AV Villas' };
+  return { name: 'card-outline', color: T.blue, label: 'Banco' };
 }
+
+// Keep for backwards compat with existing callers
+function getBankIcon(pkg: string): { name: keyof typeof Ionicons.glyphMap; color: string } {
+  const { name, color } = getBankMeta(pkg);
+  return { name, color };
+}
+
+// Maps a human-readable bank name (from DB) to its brand colour
+function getBankColor(bankName: string): string {
+  const n = bankName.toLowerCase();
+  if (n.includes('bancolombia'))                return '#FFB800';
+  if (n.includes('nequi'))                      return '#6C1D8E';
+  if (n.includes('nu'))                         return '#820AD1';
+  if (n.includes('daviplata'))                  return '#D40000';
+  if (n.includes('davivienda'))                 return '#D40000';
+  if (n.includes('bbva'))                       return '#004C9E';
+  if (n.includes('rappibank') || n.includes('rappi')) return '#FF6B00';
+  if (n.includes('lulo'))                       return '#00C896';
+  return T.blue;
+}
+
+const nk = (ts?: number, pkg?: string) => `${ts ?? 0}_${pkg ?? ''}`;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
@@ -104,6 +137,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const [hasPermission,  setHasPermission]  = useState<boolean | null>(null);
   const [notifications,  setNotifications]  = useState<NotificationEvent[]>([]);
   const [dbTransactions, setDbTransactions] = useState<TransactionItem[]>([]);
+  const [notifStatuses,  setNotifStatuses]  = useState<Record<string, 'processing' | 'done' | 'error'>>({});
 
   const checkPermission = useCallback(() => {
     if (Platform.OS === 'android') setHasPermission(isNotificationServiceEnabled());
@@ -115,39 +149,6 @@ export default function DashboardScreen({ navigation }: Props) {
     const sub = AppState.addEventListener('change', s => { if (s === 'active') checkPermission(); });
     return () => sub.remove();
   }, [checkPermission]);
-
-  const sendNotificationToApi = useCallback(async (event: NotificationEvent) => {
-    const token = await AsyncStorage.getItem('token');
-    if (!token) return;
-    try {
-      await fetch(`${API_URL}/notifications/process`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          title: event.title ?? '',
-          text: event.text ?? '',
-          package_name: event.packageName ?? '',
-          timestamp: event.timestamp ?? Date.now(),
-        }),
-      });
-      fetchTransactions();
-    } catch {}
-  }, [fetchTransactions]);
-
-  // Load from persistent store on every mount — intentionally NOT clearing so
-  // notifications survive tab switches. The service always writes to the store,
-  // so reloading on remount gives the full history.
-  useEffect(() => {
-    if (!hasPermission) return;
-    const stored = getPendingNotifications();
-    if (stored.length > 0) setNotifications(stored.slice(0, 50));
-
-    const sub = addNotificationListener((event) => {
-      setNotifications(prev => [event, ...prev].slice(0, 50));
-      sendNotificationToApi(event);
-    });
-    return () => sub.remove();
-  }, [hasPermission, sendNotificationToApi]);
 
   const fetchTransactions = useCallback(async () => {
     const token = await AsyncStorage.getItem('token');
@@ -167,8 +168,121 @@ export default function DashboardScreen({ navigation }: Props) {
 
   useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
 
+  const sendNotificationToApi = useCallback(async (event: NotificationEvent): Promise<boolean> => {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) return false;
+    try {
+      const res = await fetch(`${API_URL}/notifications/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: event.title ?? '',
+          text: event.text ?? '',
+          package_name: event.packageName ?? '',
+          timestamp: event.timestamp ?? Date.now(),
+        }),
+      });
+      if (res.ok) { fetchTransactions(); return true; }
+      return false;
+    } catch { return false; }
+  }, [fetchTransactions]);
+
+  async function markAndProcess(event: NotificationEvent) {
+    const key = nk(event.timestamp, event.packageName);
+    setNotifStatuses(prev => ({ ...prev, [key]: 'processing' }));
+    const ok = await sendNotificationToApi(event);
+    setNotifStatuses(prev => ({ ...prev, [key]: ok ? 'done' : 'error' }));
+    return ok;
+  }
+
+  async function retryNotification(event: NotificationEvent) {
+    const ok = await markAndProcess(event);
+    if (ok) {
+      const raw = await AsyncStorage.getItem('finward_processed_ids');
+      const ids = new Set<string>(raw ? JSON.parse(raw) : []);
+      ids.add(nk(event.timestamp, event.packageName));
+      await AsyncStorage.setItem('finward_processed_ids', JSON.stringify(Array.from(ids).slice(-1000)));
+    }
+  }
+
+  async function retryAllErrors() {
+    for (const n of notifications) {
+      if (notifStatuses[nk(n.timestamp, n.packageName)] === 'error') await retryNotification(n);
+    }
+  }
+
+  function clearNotifications() {
+    Alert.alert(
+      'Borrar notificaciones',
+      '¿Borrar todas las notificaciones capturadas? Esto no afecta los movimientos ya procesados.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Borrar',
+          style: 'destructive',
+          onPress: async () => {
+            clearPendingNotifications();
+            await AsyncStorage.removeItem('finward_processed_ids');
+            setNotifications([]);
+            setNotifStatuses({});
+          },
+        },
+      ],
+    );
+  }
+
+  // On mount: load stored notifications and process any that haven't been sent
+  // to the API yet (tracked via AsyncStorage to survive remounts).
+  // Live notifications are processed immediately via the listener.
+  useEffect(() => {
+    if (!hasPermission) return;
+    let active = true;
+
+    async function processStored() {
+      const stored = getPendingNotifications();
+      if (stored.length === 0) return;
+      setNotifications(stored.slice(0, 50));
+
+      const raw = await AsyncStorage.getItem('finward_processed_ids');
+      const processed = new Set<string>(raw ? JSON.parse(raw) : []);
+      const pending = stored.filter(n => !processed.has(nk(n.timestamp, n.packageName)));
+
+      for (const n of pending) {
+        if (!active) break;
+        const ok = await markAndProcess(n);
+        if (ok) processed.add(nk(n.timestamp, n.packageName));
+      }
+      if (pending.length > 0 && active) {
+        await AsyncStorage.setItem(
+          'finward_processed_ids',
+          JSON.stringify(Array.from(processed).slice(-1000)),
+        );
+      }
+    }
+
+    processStored();
+
+    const sub = addNotificationListener(async (event) => {
+      setNotifications(prev => [event, ...prev].slice(0, 50));
+      const ok = await markAndProcess(event);
+      if (ok) {
+        const raw = await AsyncStorage.getItem('finward_processed_ids');
+        const ids = new Set<string>(raw ? JSON.parse(raw) : []);
+        ids.add(nk(event.timestamp, event.packageName));
+        await AsyncStorage.setItem('finward_processed_ids', JSON.stringify(Array.from(ids).slice(-1000)));
+      }
+    });
+
+    return () => { active = false; sub.remove(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasPermission, sendNotificationToApi]);
+
+  const processingCount = Object.values(notifStatuses).filter(s => s === 'processing').length;
+  const errorCount      = Object.values(notifStatuses).filter(s => s === 'error').length;
+
   function handleTabPress(label: string) {
-    if (label === 'Inicio') navigation.replace('FinancialDashboard');
+    if (label === 'Inicio')        navigation.replace('FinancialDashboard');
+    if (label === 'Suscripciones') navigation.navigate('Subscriptions');
   }
 
   return (
@@ -199,13 +313,30 @@ export default function DashboardScreen({ navigation }: Props) {
               <Text style={s.statLabel}>Capturadas</Text>
             </View>
           </View>
+
+          {processingCount > 0 && (
+            <View style={[s.statusBanner, s.statusBannerInfo]}>
+              <ActivityIndicator size={12} color="rgba(255,255,255,0.9)" />
+              <Text style={s.statusBannerText}>
+                Procesando {processingCount} notificación{processingCount > 1 ? 'es' : ''}…
+              </Text>
+            </View>
+          )}
+          {errorCount > 0 && processingCount === 0 && (
+            <TouchableOpacity style={[s.statusBanner, s.statusBannerError]} onPress={retryAllErrors} activeOpacity={0.8}>
+              <Ionicons name="alert-circle-outline" size={14} color="rgba(255,255,255,0.9)" />
+              <Text style={s.statusBannerText}>
+                {errorCount} sin procesar · Toca para reintentar
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Body */}
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
 
           {/* — Movimientos procesados — */}
-          <Text style={s.sectionTitle}>MOVIMIENTOS PROCESADOS</Text>
+          <Text style={[s.sectionTitle, { marginBottom: 10 }]}>MOVIMIENTOS PROCESADOS</Text>
           {dbTransactions.length === 0 ? (
             <View style={s.emptyCard}>
               <Ionicons name="receipt-outline" size={32} color={T.textLight} />
@@ -223,7 +354,18 @@ export default function DashboardScreen({ navigation }: Props) {
                     </View>
                     <View style={s.info}>
                       <Text style={s.rowTitle} numberOfLines={1}>{tx.comercio}</Text>
-                      <Text style={s.rowMeta}>{tx.categoria} · {formatFecha(tx.fecha)}</Text>
+                      <View style={s.bankBadgeRow}>
+                        <Text style={s.rowMeta}>{tx.categoria}</Text>
+                        {tx.banco ? (() => {
+                          const bc = getBankColor(tx.banco);
+                          return (
+                            <View style={[s.bankBadge, { backgroundColor: bc + '22' }]}>
+                              <Text style={[s.bankBadgeText, { color: bc }]}>{tx.banco}</Text>
+                            </View>
+                          );
+                        })() : null}
+                        <Text style={s.rowMeta}> · {formatFecha(tx.fecha)}</Text>
+                      </View>
                     </View>
                     <Text style={[s.amount, { color: isIngreso ? T.green : T.red }]}>
                       {isIngreso ? '+' : '-'}{formatCOP(tx.monto)}
@@ -235,7 +377,14 @@ export default function DashboardScreen({ navigation }: Props) {
           )}
 
           {/* — Notificaciones capturadas — */}
-          <Text style={[s.sectionTitle, s.sectionGap]}>NOTIFICACIONES CAPTURADAS</Text>
+          <View style={[s.sectionRow, s.sectionGap]}>
+            <Text style={s.sectionTitle}>NOTIFICACIONES CAPTURADAS</Text>
+            {notifications.length > 0 && (
+              <TouchableOpacity onPress={clearNotifications} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="trash-outline" size={15} color={T.textLight} />
+              </TouchableOpacity>
+            )}
+          </View>
           {hasPermission === null ? (
             <View style={s.emptyCard}>
               <Text style={s.emptyText}>Verificando permisos…</Text>
@@ -261,7 +410,9 @@ export default function DashboardScreen({ navigation }: Props) {
           ) : (
             <View style={s.list}>
               {notifications.map((item, i) => {
-                const { name: icon, color } = getBankIcon(item.packageName ?? '');
+                const { name: icon, color, label: bankLabel } = getBankMeta(item.packageName ?? '');
+                const key    = nk(item.timestamp, item.packageName);
+                const status = notifStatuses[key];
                 return (
                   <View key={`${item.timestamp}-${i}`} style={[s.row, i > 0 && s.rowBorder]}>
                     <View style={[s.iconWrap, { backgroundColor: color + '18' }]}>
@@ -269,10 +420,26 @@ export default function DashboardScreen({ navigation }: Props) {
                     </View>
                     <View style={s.info}>
                       <Text style={s.rowTitle} numberOfLines={1}>{item.title || 'Sin título'}</Text>
-                      <Text style={s.rowMeta} numberOfLines={1}>{item.packageName}</Text>
+                      <View style={s.bankBadgeRow}>
+                        <View style={[s.bankBadge, { backgroundColor: color + '18' }]}>
+                          <Text style={[s.bankBadgeText, { color }]}>{bankLabel}</Text>
+                        </View>
+                        <Text style={s.rowMeta}> · {formatFecha(new Date(item.timestamp ?? Date.now()).toISOString())}</Text>
+                      </View>
                     </View>
                     <View style={s.notifRight}>
                       <Text style={s.notifText} numberOfLines={2}>{item.text || '—'}</Text>
+                      {status === 'processing' && (
+                        <ActivityIndicator size={13} color={T.blue} style={s.statusIcon} />
+                      )}
+                      {status === 'done' && (
+                        <Ionicons name="checkmark-circle" size={15} color={T.green} style={s.statusIcon} />
+                      )}
+                      {status === 'error' && (
+                        <TouchableOpacity onPress={() => retryNotification(item)} style={s.statusIcon}>
+                          <Ionicons name="refresh-circle" size={17} color={T.red} />
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 );
@@ -339,9 +506,12 @@ const s = StyleSheet.create({
   scroll:        { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 12 },
 
+  sectionRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10,
+  },
   sectionTitle: {
     fontSize: 11, fontWeight: '700', color: T.textLight,
-    letterSpacing: 0.5, marginBottom: 10,
+    letterSpacing: 0.5,
   },
   sectionGap: { marginTop: 20 },
 
@@ -355,7 +525,10 @@ const s = StyleSheet.create({
   iconWrap:  { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   info:      { flex: 1, minWidth: 0 },
   rowTitle:  { fontSize: 14, fontWeight: '600', color: T.text },
-  rowMeta:   { fontSize: 11, color: T.textLight, marginTop: 2 },
+  rowMeta:   { fontSize: 11, color: T.textLight },
+  bankBadgeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: 3, gap: 4 },
+  bankBadge:    { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
+  bankBadgeText:{ fontSize: 10, fontWeight: '600' },
   amount:    { fontSize: 14, fontWeight: '700' },
   notifRight:{ maxWidth: 110, alignItems: 'flex-end' },
   notifText: { fontSize: 12, color: T.textMid, textAlign: 'right' },
@@ -387,4 +560,14 @@ const s = StyleSheet.create({
   navTab:         { alignItems: 'center', gap: 3, paddingHorizontal: 12, paddingVertical: 4 },
   navLabel:       { fontSize: 10, color: T.textLight },
   navLabelActive: { color: T.blue, fontWeight: '600' },
+
+  statusBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginTop: 10, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+  },
+  statusBannerInfo:  { backgroundColor: 'rgba(255,255,255,0.15)' },
+  statusBannerError: { backgroundColor: 'rgba(217,79,79,0.35)' },
+  statusBannerText:  { fontSize: 12, color: 'rgba(255,255,255,0.92)', flex: 1 },
+
+  statusIcon: { alignSelf: 'flex-end', marginTop: 4 },
 });

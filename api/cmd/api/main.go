@@ -65,10 +65,12 @@ func main() {
 
 	userRepo := repository.NewUserRepository(dbPool)
 	txRepo := repository.NewTransactionRepository(dbPool)
+	subRepo := repository.NewSubscriptionRepository(dbPool)
 
 	authHandler := handlers.NewAuthHandler(userRepo)
 	dashboardHandler := handlers.NewDashboardHandler(txRepo)
-	notificationHandler := handlers.NewNotificationHandler(txRepo, aiURL)
+	notificationHandler := handlers.NewNotificationHandler(txRepo, subRepo, aiURL)
+	subscriptionHandler := handlers.NewSubscriptionHandler(subRepo)
 
 	// 3. Configurar el servidor HTTP con Gin
 	r := gin.Default()
@@ -86,11 +88,27 @@ func main() {
 
 	// Rutas públicas
 	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "pong"})
+	})
+
+	r.GET("/health", func(c *gin.Context) {
+		aiStatus, aiDetail := "unreachable", ""
+		if resp, err := http.Get(aiURL + "/health"); err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				aiStatus = "ok"
+			} else {
+				aiStatus = fmt.Sprintf("error_%d", resp.StatusCode)
+			}
+		} else {
+			aiDetail = err.Error()
+		}
 		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-			"status":  "API de FinWard funcionando correctamente",
+			"api": "ok",
+			"ai":  gin.H{"status": aiStatus, "url": aiURL, "detail": aiDetail},
 		})
 	})
+
 	r.POST("/login", authHandler.Login)
 
 	// Rutas protegidas
@@ -99,6 +117,9 @@ func main() {
 	{
 		protected.GET("/summary", dashboardHandler.GetSummary)
 		protected.POST("/notifications/process", notificationHandler.Process)
+		protected.GET("/subscriptions", subscriptionHandler.List)
+		protected.PATCH("/subscriptions/:id", subscriptionHandler.Update)
+		protected.DELETE("/subscriptions/:id", subscriptionHandler.Delete)
 	}
 
 	// 4. Arrancar el servidor

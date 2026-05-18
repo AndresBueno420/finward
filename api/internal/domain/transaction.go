@@ -19,4 +19,6 @@ type NewTransaction struct {
 	Date                time.Time
 	RawNotificationText string
 	IsSubscription      bool
+	PaymentMethod       string
+	Bank                string
 }

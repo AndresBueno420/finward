@@ -72,7 +72,8 @@ func (r *postgresTransactionRepository) GetMonthlySummary(ctx context.Context, u
 			t.id, t.amount, t.currency, t.date,
 			COALESCE(m.clean_name, m.raw_name, 'Desconocido') AS comercio,
 			COALESCE(c.name, 'Otros')  AS categoria,
-			COALESCE(c.type, 'gasto')  AS tipo
+			COALESCE(c.type, 'gasto')  AS tipo,
+			COALESCE(t.bank, '')       AS banco
 		FROM transactions t
 		LEFT JOIN merchants m  ON t.merchant_id  = m.id
 		LEFT JOIN categories c ON t.category_id  = c.id
@@ -92,7 +93,7 @@ func (r *postgresTransactionRepository) GetMonthlySummary(ctx context.Context, u
 	var transactions []domain.TransactionItem
 	for txRows.Next() {
 		var tx domain.TransactionItem
-		if err := txRows.Scan(&tx.ID, &tx.Monto, &tx.Divisa, &tx.Fecha, &tx.Comercio, &tx.Categoria, &tx.Tipo); err != nil {
+		if err := txRows.Scan(&tx.ID, &tx.Monto, &tx.Divisa, &tx.Fecha, &tx.Comercio, &tx.Categoria, &tx.Tipo, &tx.Banco); err != nil {
 			return nil, err
 		}
 		transactions = append(transactions, tx)
@@ -141,11 +142,11 @@ func (r *postgresTransactionRepository) SaveTransaction(ctx context.Context, tx 
 
 	_, err = r.db.Exec(ctx,
 		`INSERT INTO transactions
-			(user_id, merchant_id, category_id, amount, currency, date, raw_notification_text, status, is_subscription)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, 'processed', $8)`,
+			(user_id, merchant_id, category_id, amount, currency, date, raw_notification_text, status, is_subscription, bank)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, 'processed', $8, $9)`,
 		tx.UserID, merchantID, categoryID,
 		tx.Amount, tx.Currency, tx.Date,
-		tx.RawNotificationText, tx.IsSubscription,
+		tx.RawNotificationText, tx.IsSubscription, tx.Bank,
 	)
 	return err
 }

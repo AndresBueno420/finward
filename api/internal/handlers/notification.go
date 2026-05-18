@@ -7,30 +7,34 @@ import (
 	"finward-backend/internal/domain"
 	"finward-backend/internal/repository"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 type NotificationHandler struct {
-	txRepo repository.TransactionRepository
-	aiURL  string
+	txRepo  repository.TransactionRepository
+	subRepo repository.SubscriptionRepository
+	aiURL   string
 }
 
-func NewNotificationHandler(txRepo repository.TransactionRepository, aiURL string) *NotificationHandler {
-	return &NotificationHandler{txRepo: txRepo, aiURL: aiURL}
+func NewNotificationHandler(txRepo repository.TransactionRepository, subRepo repository.SubscriptionRepository, aiURL string) *NotificationHandler {
+	return &NotificationHandler{txRepo: txRepo, subRepo: subRepo, aiURL: aiURL}
 }
 
 type aiTransaccion struct {
-	Comercio   string   `json:"comercio"`
-	Monto      float64  `json:"monto"`
-	Divisa     string   `json:"divisa"`
-	Fecha      *string  `json:"fecha"`
-	Banco      string   `json:"banco"`
-	Tipo       string   `json:"tipo"`
-	Categoria  string   `json:"categoria"`
-	Confidence float64  `json:"confidence"`
+	Comercio   string  `json:"comercio"`
+	Monto      float64 `json:"monto"`
+	Divisa     string  `json:"divisa"`
+	Fecha      *string `json:"fecha"`
+	Banco      string  `json:"banco"`
+	Tipo       string  `json:"tipo"`
+	Categoria  string  `json:"categoria"`
+	Confidence float64 `json:"confidence"`
 }
 
 type aiResponse struct {
@@ -49,7 +53,12 @@ func (h *NotificationHandler) Process(c *gin.Context) {
 
 	aiResp, err := h.callAI(req)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("ai service unavailable: %v", err)})
+		msg := err.Error()
+		status := http.StatusBadGateway
+		if strings.Contains(msg, "503") || strings.Contains(msg, "quota") || strings.Contains(msg, "rate") {
+			status = http.StatusServiceUnavailable
+		}
+		c.JSON(status, gin.H{"error": msg})
 		return
 	}
 
@@ -70,11 +79,21 @@ func (h *NotificationHandler) Process(c *gin.Context) {
 		Date:                txDate,
 		RawNotificationText: req.Title + " " + req.Text,
 		IsSubscription:      aiResp.Transaccion.Categoria == "Suscripciones",
+		PaymentMethod:       aiResp.Transaccion.Banco,
+		Bank:                aiResp.Transaccion.Banco,
 	}
 
 	if err := h.txRepo.SaveTransaction(context.Background(), newTx); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save transaction"})
 		return
+	}
+
+	if newTx.IsSubscription {
+		_ = h.subRepo.UpsertForMerchant(
+			context.Background(),
+			userID, newTx.MerchantRaw, newTx.PaymentMethod,
+			newTx.Amount, newTx.Currency, txDate,
+		)
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
@@ -95,12 +114,15 @@ func (h *NotificationHandler) callAI(req domain.ProcessNotificationRequest) (*ai
 
 	resp, err := http.Post(h.aiURL+"/internal/process", "application/json", bytes.NewReader(body))
 	if err != nil {
+		log.Printf("[AI] connection error to %s: %v", h.aiURL, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("ai service returned %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("[AI] error %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("ai service returned %d: %s", resp.StatusCode, string(body))
 	}
 
 	var result aiResponse

@@ -153,6 +153,7 @@ export default function FinancialDashboardScreen({ navigation }: Props) {
 
   function handleTabPress(label: string) {
     if (label === 'Notificaciones') navigation.navigate('Dashboard');
+    if (label === 'Suscripciones')  navigation.navigate('Subscriptions');
   }
 
   const gastos  = data?.por_categoria.filter(c => c.tipo === 'gasto') ?? [];

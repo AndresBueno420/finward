@@ -18,6 +18,7 @@ type TransactionItem struct {
 	Monto     float64   `json:"monto"`
 	Divisa    string    `json:"divisa"`
 	Fecha     time.Time `json:"fecha"`
+	Banco     string    `json:"banco"`
 }
 
 type SummaryResponse struct {

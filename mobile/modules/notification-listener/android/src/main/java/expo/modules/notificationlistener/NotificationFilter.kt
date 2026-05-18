@@ -31,23 +31,33 @@ object NotificationFilter {
         "co.bold.app",
     )
 
-    // Fallback para apps bancarias no listadas o apps de pago emergentes.
-    // Se evalúa sobre (title + text) en minúsculas solo si el packageName no está en whitelist.
+    // Chat/social apps that must never pass through even if they mention money
+    private val SOCIAL_BLACKLIST = setOf(
+        "com.whatsapp",
+        "com.whatsapp.w4b",
+        "org.telegram.messenger",
+        "com.telegram.messenger",
+        "com.instagram.android",
+        "com.facebook.katana",
+        "com.facebook.orca",
+        "com.twitter.android",
+        "com.snapchat.android",
+        "com.zhiliaoapp.musically",
+        "com.ss.android.ugc.trill",
+    )
+
     private val FINANCIAL_KEYWORDS = listOf(
-        // Gastos
-        "compra", "pago", "transferencia", "retiro", "depósito",
-        "consignación", "cobro", "cargo", "abono", "recarga",
-        "aprobad", "exitoso", "realizad", "completad", "procesad",
-        "saldo", "disponible", "débito", "crédito",
-        // Ingresos — "recibi" cubre: recibiste, recibida, recibido
-        "recibi", "enviaron", "acreditad", "ingreso",
-        // Símbolos/monedas
-        "$", "cop", "usd",
+        "compra", "pago", "transferencia", "enviaste", "recibiste",
+        "débito", "debito", "crédito", "credito", "retiro",
+        "consignación", "consignacion", "depósito", "deposito",
+        "transacción", "transaccion", "acreditado", "cobro recibido",
     )
 
     fun shouldProcess(packageName: String, title: String, text: String): Boolean {
         if (packageName in BANKING_PACKAGES) return true
-        val combined = "$title $text".lowercase()
+        if (packageName in SOCIAL_BLACKLIST) return false
+        // Fallback for banking apps not yet in the whitelist
+        val combined = (title + " " + text).lowercase()
         return FINANCIAL_KEYWORDS.any { combined.contains(it) }
     }
 }

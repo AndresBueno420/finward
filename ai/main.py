@@ -36,4 +36,7 @@ def process_notification(req: ProcesarNotificacionRequest):
             fallback_categoria=fallback,
         )
     except Exception as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        err = str(e)
+        if "429" in err or "quota" in err.lower() or "rate" in err.lower() or "exhausted" in err.lower():
+            raise HTTPException(status_code=503, detail=err)
+        raise HTTPException(status_code=422, detail=err)
