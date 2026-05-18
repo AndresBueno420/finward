@@ -34,10 +34,14 @@ object NotificationFilter {
     // Fallback para apps bancarias no listadas o apps de pago emergentes.
     // Se evalúa sobre (title + text) en minúsculas solo si el packageName no está en whitelist.
     private val FINANCIAL_KEYWORDS = listOf(
+        // Gastos
         "compra", "pago", "transferencia", "retiro", "depósito",
         "consignación", "cobro", "cargo", "abono", "recarga",
         "aprobad", "exitoso", "realizad", "completad", "procesad",
         "saldo", "disponible", "débito", "crédito",
+        // Ingresos — "recibi" cubre: recibiste, recibida, recibido
+        "recibi", "enviaron", "acreditad", "ingreso",
+        // Símbolos/monedas
         "$", "cop", "usd",
     )
 

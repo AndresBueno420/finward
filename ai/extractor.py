@@ -4,7 +4,7 @@ import google.generativeai as genai
 import instructor
 from dotenv import load_dotenv
 
-from models import Categoria, TransaccionExtraida
+from models import Categoria, TipoMovimiento, TransaccionExtraida
 
 load_dotenv()
 
@@ -19,21 +19,34 @@ FORMATO NUMÉRICO COLOMBIANO:
 - Coma como separador decimal: $1.234.567,89
 - Extrae el monto siempre como número positivo sin símbolos: 1234567.89
 
-CATEGORÍAS Y CRITERIOS:
-- Alimentación: supermercados (Éxito, Jumbo, D1, Ara), restaurantes, cafeterías, delivery de comida (Rappi, iFood, Domicilios.com)
+TIPO DE MOVIMIENTO — determínalo antes de asignar la categoría:
+- gasto: el dinero SALE de la cuenta del usuario (compras, pagos, retiros, transferencias enviadas)
+  Frases típicas: "Compra aprobada", "Pagaste", "Transferiste", "Retiro", "Débito"
+- ingreso: el dinero ENTRA a la cuenta del usuario (transferencias recibidas, consignaciones, pagos recibidos)
+  Frases típicas: "Recibiste", "Te enviaron", "Te consignaron", "Transferencia recibida",
+                  "Depósito recibido", "Acreditado en tu cuenta", "Te pagaron", "Cobro recibido"
+
+REGLA ABSOLUTA: si tipo = ingreso → categoría SIEMPRE es "Ingreso" sin excepción.
+
+CATEGORÍAS PARA GASTOS:
+- Alimentación: supermercados (Éxito, Jumbo, D1, Ara), restaurantes, cafeterías, delivery (Rappi Food, iFood, Domicilios.com)
 - Transporte: Uber, InDriver, Cabify, taxis, combustible (Terpel, Primax), peajes, TransMilenio
-- Entretenimiento: cine (Cinemark, Cine Colombia), videojuegos, Steam, plataformas de streaming (Netflix, Spotify, Disney+, HBO, Prime)
-- Suscripciones: pagos recurrentes mensuales o anuales a servicios digitales, SaaS, membresías (distinto de Entretenimiento cuando el contexto es claramente una suscripción)
-- Salud: farmacias (Cruz Verde, Droguería), médicos, clínicas, laboratorios, seguros de salud (Compensar, Sura)
+- Entretenimiento: cine (Cinemark, Cine Colombia), videojuegos, Steam, streaming (Netflix, Spotify, Disney+, HBO, Prime)
+- Suscripciones: pagos recurrentes mensuales o anuales a servicios digitales, SaaS, membresías
+- Salud: farmacias (Cruz Verde, Droguería), médicos, clínicas, laboratorios, seguros (Compensar, Sura)
 - Otros: comercios que no encajan claramente en ninguna categoría anterior
+
+CAMPO comercio:
+- Para gastos: nombre del establecimiento o servicio (ej: "RAPPI COLOMBIA SAS", "Netflix")
+- Para ingresos: nombre del remitente tal como aparece en la notificación (ej: "Carlos García", "Empresa XYZ")
 
 BANCO: identifícalo por el package name de la app o por el texto de la notificación.
 
 CONFIANZA: asigna un valor bajo (< 0.6) cuando:
 - El texto está incompleto o es ambiguo
-- El comercio es genérico o desconocido
+- El comercio o remitente es desconocido o genérico
 - No puedes determinar el monto con certeza
-- La categoría no es clara
+- El tipo de movimiento no es claro
 
 Devuelve null en fecha si no aparece explícitamente en el texto."""
 
@@ -68,7 +81,12 @@ def extraer_transaccion(texto: str, paquete: str) -> tuple[TransaccionExtraida, 
         max_retries=3,
     )
 
-    fallback = resultado.confidence < CONFIDENCE_THRESHOLD
+    # El fallback a "Otros" solo aplica a gastos con baja confianza.
+    # Los ingresos siempre quedan como "Ingreso" independientemente del confidence.
+    fallback = (
+        resultado.confidence < CONFIDENCE_THRESHOLD
+        and resultado.tipo == TipoMovimiento.gasto
+    )
     if fallback:
         resultado.categoria = Categoria.otros
 
