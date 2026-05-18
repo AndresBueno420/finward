@@ -45,8 +45,9 @@ class NotificationListenerModule : Module() {
     }
 
     Function("clearPendingNotifications") {
-      val context = appContext.reactContext ?: return@Function
+      val context = appContext.reactContext ?: return@Function null
       NotificationStore.clear(context)
+      null
     }
   }
 

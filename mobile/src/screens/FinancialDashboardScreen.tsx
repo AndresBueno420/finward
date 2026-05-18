@@ -5,16 +5,16 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
-const API_URL = 'http://10.23.149.225:8080';
+const API_URL = 'http://192.168.86.241:8080';
 
 const T = {
   blue:       '#4A6FA5',
