@@ -3,9 +3,10 @@ package handlers
 import (
 	"net/http"
 
+	"finward-backend/internal/repository"
+	"finward-backend/pkg/utils"
+
 	"github.com/gin-gonic/gin"
-	"finward-backend/internal/repository" // Recuerda cambiar "tu-modulo"
-	"finward-backend/pkg/utils"           // Recuerda cambiar "tu-modulo"
 )
 
 // LoginRequest define lo que esperamos recibir en el JSON del móvil

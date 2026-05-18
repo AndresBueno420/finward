@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import {
@@ -52,7 +53,7 @@ export default function LoginScreen({ navigation }: Props) {
         return;
       }
       await AsyncStorage.setItem('token', data.token);
-      navigation.replace('Dashboard');
+      navigation.replace('FinancialDashboard');
     } catch {
       setError('No se pudo conectar con el servidor.');
     } finally {
@@ -85,7 +86,7 @@ export default function LoginScreen({ navigation }: Props) {
           <View>
             <Text style={styles.label}>CORREO ELECTRÓNICO</Text>
             <View style={[styles.inputRow, focused === 'email' && styles.inputRowFocused]}>
-              <Text style={[styles.inputIcon, focused === 'email' && styles.inputIconActive]}>✉</Text>
+              <Ionicons name="mail-outline" size={18} color={focused === 'email' ? T.blue : T.textLight} />
               <TextInput
                 style={styles.inputText}
                 placeholder="usuario@email.com"
@@ -105,7 +106,7 @@ export default function LoginScreen({ navigation }: Props) {
           <View>
             <Text style={styles.label}>CONTRASEÑA</Text>
             <View style={[styles.inputRow, focused === 'password' && styles.inputRowFocused]}>
-              <Text style={[styles.inputIcon, focused === 'password' && styles.inputIconActive]}>🔒</Text>
+              <Ionicons name="lock-closed-outline" size={18} color={focused === 'password' ? T.blue : T.textLight} />
               <TextInput
                 style={[styles.inputText, { flex: 1 }]}
                 placeholder="••••••••"
@@ -118,7 +119,7 @@ export default function LoginScreen({ navigation }: Props) {
                 onBlur={() => setFocused(null)}
               />
               <TouchableOpacity onPress={() => setShowPass(v => !v)} hitSlop={8}>
-                <Text style={styles.inputIcon}>{showPass ? '🙈' : '👁'}</Text>
+                <Ionicons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={18} color={T.textLight} />
               </TouchableOpacity>
             </View>
           </View>

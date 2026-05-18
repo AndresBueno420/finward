@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"finward-backend/internal/handlers"
+	"finward-backend/internal/middleware"
 	"finward-backend/internal/repository"
 	"fmt"
 	"log"
@@ -58,7 +59,10 @@ func main() {
 	fmt.Println("Conexión exitosa a PostgreSQL")
 
 	userRepo := repository.NewUserRepository(dbPool)
+	txRepo := repository.NewTransactionRepository(dbPool)
+
 	authHandler := handlers.NewAuthHandler(userRepo)
+	dashboardHandler := handlers.NewDashboardHandler(txRepo)
 
 	// 3. Configurar el servidor HTTP con Gin
 	r := gin.Default()
@@ -74,15 +78,21 @@ func main() {
 		c.Next()
 	})
 
-	// Endpoint de prueba (Healthcheck)
+	// Rutas públicas
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
 			"status":  "API de FinWard funcionando correctamente",
 		})
 	})
-
 	r.POST("/login", authHandler.Login)
+
+	// Rutas protegidas
+	protected := r.Group("/")
+	protected.Use(middleware.AuthMiddleware())
+	{
+		protected.GET("/summary", dashboardHandler.GetSummary)
+	}
 
 	// 4. Arrancar el servidor
 	port := os.Getenv("PORT")
