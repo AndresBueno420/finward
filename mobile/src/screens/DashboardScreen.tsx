@@ -6,10 +6,12 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -138,6 +140,10 @@ export default function DashboardScreen({ navigation }: Props) {
   const [notifications,  setNotifications]  = useState<NotificationEvent[]>([]);
   const [dbTransactions, setDbTransactions] = useState<TransactionItem[]>([]);
   const [notifStatuses,  setNotifStatuses]  = useState<Record<string, 'processing' | 'done' | 'error'>>({});
+  const [editTx,         setEditTx]         = useState<TransactionItem | null>(null);
+  const [editCategory,   setEditCategory]   = useState('');
+  const [editMerchant,   setEditMerchant]   = useState('');
+  const [saving,         setSaving]         = useState(false);
 
   const checkPermission = useCallback(() => {
     if (Platform.OS === 'android') setHasPermission(isNotificationServiceEnabled());
@@ -280,6 +286,34 @@ export default function DashboardScreen({ navigation }: Props) {
   const processingCount = Object.values(notifStatuses).filter(s => s === 'processing').length;
   const errorCount      = Object.values(notifStatuses).filter(s => s === 'error').length;
 
+  function openEdit(tx: TransactionItem) {
+    setEditTx(tx);
+    setEditCategory(tx.categoria);
+    setEditMerchant(tx.comercio);
+  }
+
+  async function saveEdit() {
+    if (!editTx) return;
+    setSaving(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const body: Record<string, string> = {};
+      if (editCategory !== editTx.categoria) body.category_name = editCategory;
+      if (editMerchant !== editTx.comercio)  body.merchant_clean = editMerchant;
+      if (Object.keys(body).length > 0) {
+        await fetch(`${API_URL}/transactions/${editTx.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        fetchTransactions();
+      }
+    } finally {
+      setSaving(false);
+      setEditTx(null);
+    }
+  }
+
   function handleTabPress(label: string) {
     if (label === 'Inicio')        navigation.replace('FinancialDashboard');
     if (label === 'Suscripciones') navigation.navigate('Subscriptions');
@@ -348,7 +382,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 const isIngreso = tx.tipo === 'ingreso';
                 const color = categoryColor(tx.categoria);
                 return (
-                  <View key={tx.id} style={[s.row, i > 0 && s.rowBorder]}>
+                  <TouchableOpacity key={tx.id} style={[s.row, i > 0 && s.rowBorder]} onPress={() => openEdit(tx)} activeOpacity={0.7}>
                     <View style={[s.iconWrap, { backgroundColor: color + '18' }]}>
                       <Ionicons name={categoryIcon(tx.categoria)} size={18} color={color} />
                     </View>
@@ -367,10 +401,13 @@ export default function DashboardScreen({ navigation }: Props) {
                         <Text style={s.rowMeta}> · {formatFecha(tx.fecha)}</Text>
                       </View>
                     </View>
-                    <Text style={[s.amount, { color: isIngreso ? T.green : T.red }]}>
-                      {isIngreso ? '+' : '-'}{formatCOP(tx.monto)}
-                    </Text>
-                  </View>
+                    <View style={s.txRight}>
+                      <Text style={[s.amount, { color: isIngreso ? T.green : T.red }]}>
+                        {isIngreso ? '+' : '-'}{formatCOP(tx.monto)}
+                      </Text>
+                      <Ionicons name="pencil-outline" size={13} color={T.textLight} style={{ marginTop: 4 }} />
+                    </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -458,6 +495,59 @@ export default function DashboardScreen({ navigation }: Props) {
           ))}
         </View>
       </View>
+
+      {/* Modal de edición */}
+      <Modal visible={editTx !== null} transparent animationType="slide" onRequestClose={() => setEditTx(null)}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setEditTx(null)}>
+          <TouchableOpacity style={s.modalSheet} activeOpacity={1} onPress={() => {}}>
+            <View style={s.modalHandle} />
+            <Text style={s.modalTitle}>Editar movimiento</Text>
+            {editTx && (
+              <Text style={s.modalSubtitle}>{formatCOP(editTx.monto)} · {formatFecha(editTx.fecha)}</Text>
+            )}
+
+            <Text style={s.modalLabel}>Comercio</Text>
+            <TextInput
+              style={s.modalInput}
+              value={editMerchant}
+              onChangeText={setEditMerchant}
+              placeholder="Nombre del comercio"
+              placeholderTextColor={T.textLight}
+            />
+
+            <Text style={s.modalLabel}>Categoría</Text>
+            <View style={s.catGrid}>
+              {Object.keys(CATEGORY_COLOR).map(cat => {
+                const color = categoryColor(cat);
+                const selected = editCategory === cat;
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[s.catChip, { borderColor: color, backgroundColor: selected ? color : 'transparent' }]}
+                    onPress={() => setEditCategory(cat)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name={categoryIcon(cat)} size={13} color={selected ? '#fff' : color} />
+                    <Text style={[s.catChipText, { color: selected ? '#fff' : color }]}>{cat}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={s.modalActions}>
+              <TouchableOpacity style={s.modalBtnCancel} onPress={() => setEditTx(null)}>
+                <Text style={s.modalBtnCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.modalBtnSave} onPress={saveEdit} disabled={saving}>
+                {saving
+                  ? <ActivityIndicator size={16} color="#fff" />
+                  : <Text style={s.modalBtnSaveText}>Guardar</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -530,6 +620,7 @@ const s = StyleSheet.create({
   bankBadge:    { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
   bankBadgeText:{ fontSize: 10, fontWeight: '600' },
   amount:    { fontSize: 14, fontWeight: '700' },
+  txRight:   { alignItems: 'flex-end' },
   notifRight:{ maxWidth: 110, alignItems: 'flex-end' },
   notifText: { fontSize: 12, color: T.textMid, textAlign: 'right' },
 
@@ -570,4 +661,42 @@ const s = StyleSheet.create({
   statusBannerText:  { fontSize: 12, color: 'rgba(255,255,255,0.92)', flex: 1 },
 
   statusIcon: { alignSelf: 'flex-end', marginTop: 4 },
+
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: T.card, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: 36,
+  },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 2, backgroundColor: T.border,
+    alignSelf: 'center', marginBottom: 20,
+  },
+  modalTitle:    { fontSize: 17, fontWeight: '700', color: T.text, marginBottom: 4 },
+  modalSubtitle: { fontSize: 13, color: T.textMid, marginBottom: 20 },
+  modalLabel:    { fontSize: 11, fontWeight: '700', color: T.textLight, letterSpacing: 0.5, marginBottom: 8 },
+  modalInput: {
+    borderWidth: 1, borderColor: T.border, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10,
+    fontSize: 14, color: T.text, marginBottom: 20,
+  },
+  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+  catChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1.5, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  catChipText: { fontSize: 12, fontWeight: '600' },
+  modalActions: { flexDirection: 'row', gap: 12 },
+  modalBtnCancel: {
+    flex: 1, paddingVertical: 13, borderRadius: 12,
+    borderWidth: 1, borderColor: T.border, alignItems: 'center',
+  },
+  modalBtnCancelText: { fontSize: 14, fontWeight: '600', color: T.textMid },
+  modalBtnSave: {
+    flex: 1, paddingVertical: 13, borderRadius: 12,
+    backgroundColor: T.blue, alignItems: 'center',
+  },
+  modalBtnSaveText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 });

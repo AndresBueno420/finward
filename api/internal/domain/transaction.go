@@ -22,3 +22,8 @@ type NewTransaction struct {
 	PaymentMethod       string
 	Bank                string
 }
+
+type TransactionUpdate struct {
+	CategoryName  *string `json:"category_name"`
+	MerchantClean *string `json:"merchant_clean"`
+}

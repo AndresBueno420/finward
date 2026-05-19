@@ -71,6 +71,7 @@ func main() {
 	dashboardHandler := handlers.NewDashboardHandler(txRepo)
 	notificationHandler := handlers.NewNotificationHandler(txRepo, subRepo, aiURL)
 	subscriptionHandler := handlers.NewSubscriptionHandler(subRepo)
+	transactionHandler := handlers.NewTransactionHandler(txRepo)
 
 	// 3. Configurar el servidor HTTP con Gin
 	r := gin.Default()
@@ -120,6 +121,7 @@ func main() {
 		protected.GET("/subscriptions", subscriptionHandler.List)
 		protected.PATCH("/subscriptions/:id", subscriptionHandler.Update)
 		protected.DELETE("/subscriptions/:id", subscriptionHandler.Delete)
+		protected.PATCH("/transactions/:id", transactionHandler.Update)
 	}
 
 	// 4. Arrancar el servidor

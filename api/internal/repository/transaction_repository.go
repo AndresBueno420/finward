@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"finward-backend/internal/domain"
@@ -12,6 +13,7 @@ import (
 type TransactionRepository interface {
 	GetMonthlySummary(ctx context.Context, userID string, month time.Time) (*domain.SummaryResponse, error)
 	SaveTransaction(ctx context.Context, tx domain.NewTransaction) error
+	UpdateTransaction(ctx context.Context, txID, userID string, update domain.TransactionUpdate) error
 }
 
 type postgresTransactionRepository struct {
@@ -149,4 +151,50 @@ func (r *postgresTransactionRepository) SaveTransaction(ctx context.Context, tx 
 		tx.RawNotificationText, tx.IsSubscription, tx.Bank,
 	)
 	return err
+}
+
+func (r *postgresTransactionRepository) UpdateTransaction(ctx context.Context, txID, userID string, update domain.TransactionUpdate) error {
+	if update.CategoryName != nil {
+		var newCatID string
+		if err := r.db.QueryRow(ctx,
+			`SELECT id FROM categories WHERE name = $1 LIMIT 1`,
+			*update.CategoryName,
+		).Scan(&newCatID); err != nil {
+			return fmt.Errorf("categoría no encontrada: %s", *update.CategoryName)
+		}
+
+		// Guardar categoría original para ai_corrections (best-effort)
+		var origCatID *string
+		_ = r.db.QueryRow(ctx,
+			`SELECT category_id FROM transactions WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
+			txID, userID,
+		).Scan(&origCatID)
+
+		if _, err := r.db.Exec(ctx,
+			`UPDATE transactions SET category_id = $1 WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL`,
+			newCatID, txID, userID,
+		); err != nil {
+			return err
+		}
+
+		// Registrar corrección con el texto original de la notificación como contexto
+		_, _ = r.db.Exec(ctx,
+			`INSERT INTO ai_corrections (transaction_id, original_category_id, corrected_category_id, prompt_used)
+			 VALUES ($1, $2, $3,
+			   (SELECT jsonb_build_object('raw_text', raw_notification_text) FROM transactions WHERE id = $1))`,
+			txID, origCatID, newCatID,
+		)
+	}
+
+	if update.MerchantClean != nil {
+		if _, err := r.db.Exec(ctx,
+			`UPDATE merchants SET clean_name = $1
+			 WHERE id = (SELECT merchant_id FROM transactions WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL)`,
+			*update.MerchantClean, txID, userID,
+		); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
