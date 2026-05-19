@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -144,6 +144,8 @@ export default function DashboardScreen({ navigation }: Props) {
   const [editCategory,   setEditCategory]   = useState('');
   const [editMerchant,   setEditMerchant]   = useState('');
   const [saving,         setSaving]         = useState(false);
+  // Previene que processStored y el live listener procesen la misma notificación en paralelo
+  const inFlightRef = useRef(new Set<string>());
 
   const checkPermission = useCallback(() => {
     if (Platform.OS === 'android') setHasPermission(isNotificationServiceEnabled());
@@ -195,9 +197,12 @@ export default function DashboardScreen({ navigation }: Props) {
 
   async function markAndProcess(event: NotificationEvent) {
     const key = nk(event.timestamp, event.packageName);
+    if (inFlightRef.current.has(key)) return false;
+    inFlightRef.current.add(key);
     setNotifStatuses(prev => ({ ...prev, [key]: 'processing' }));
     const ok = await sendNotificationToApi(event);
     setNotifStatuses(prev => ({ ...prev, [key]: ok ? 'done' : 'error' }));
+    if (!ok) inFlightRef.current.delete(key); // permitir reintento
     return ok;
   }
 

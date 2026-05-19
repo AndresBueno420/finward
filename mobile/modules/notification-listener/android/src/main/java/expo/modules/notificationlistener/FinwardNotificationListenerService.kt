@@ -22,6 +22,6 @@ class FinwardNotificationListenerService : NotificationListenerService() {
     if (!NotificationFilter.shouldProcess(packageName, title, text)) return
 
     NotificationStore.save(applicationContext, packageName, title, text, timestamp)
-    module?.sendNotification(title, text, packageName)
+    module?.sendNotification(title, text, packageName, timestamp)
   }
 }

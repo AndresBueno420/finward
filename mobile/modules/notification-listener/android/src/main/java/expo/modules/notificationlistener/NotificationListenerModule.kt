@@ -51,14 +51,14 @@ class NotificationListenerModule : Module() {
     }
   }
 
-  fun sendNotification(title: String, text: String, packageName: String) {
+  fun sendNotification(title: String, text: String, packageName: String, timestamp: Long) {
     sendEvent(
       "onNotificationReceived",
       mapOf(
         "title" to title,
         "text" to text,
         "packageName" to packageName,
-        "timestamp" to System.currentTimeMillis()
+        "timestamp" to timestamp
       )
     )
   }

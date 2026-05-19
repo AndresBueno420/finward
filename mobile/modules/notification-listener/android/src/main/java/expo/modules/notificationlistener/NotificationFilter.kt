@@ -48,9 +48,11 @@ object NotificationFilter {
 
     private val FINANCIAL_KEYWORDS = listOf(
         "compra", "pago", "transferencia", "enviaste", "recibiste",
+        "te enviaron", "enviaron", "te consignaron", "te pagaron",
         "débito", "debito", "crédito", "credito", "retiro",
         "consignación", "consignacion", "depósito", "deposito",
         "transacción", "transaccion", "acreditado", "cobro recibido",
+        "bre-b", "breb",
     )
 
     fun shouldProcess(packageName: String, title: String, text: String): Boolean {
