@@ -26,7 +26,7 @@ const T = {
   redLight:  '#FDF0F0',
 };
 
-const API_URL = 'http://192.168.86.241:8080';
+const API_URL = 'http://10.156.176.225:8080';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 

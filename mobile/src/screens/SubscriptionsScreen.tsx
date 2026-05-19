@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
-const API_URL = 'http://192.168.86.241:8080';
+const API_URL = 'http://10.156.176.225:8080';
 
 const T = {
   blue:      '#4A6FA5',

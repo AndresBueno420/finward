@@ -117,6 +117,18 @@ func (r *postgresTransactionRepository) GetMonthlySummary(ctx context.Context, u
 }
 
 func (r *postgresTransactionRepository) SaveTransaction(ctx context.Context, tx domain.NewTransaction) error {
+	// Idempotency: skip if same user + same notification text was processed in the last 2 minutes
+	var dup string
+	if r.db.QueryRow(ctx,
+		`SELECT id FROM transactions
+		 WHERE user_id = $1 AND raw_notification_text = $2
+		   AND created_at > NOW() - INTERVAL '2 minutes'
+		   AND deleted_at IS NULL LIMIT 1`,
+		tx.UserID, tx.RawNotificationText,
+	).Scan(&dup) == nil {
+		return nil
+	}
+
 	var merchantID *string
 	var mid string
 	err := r.db.QueryRow(ctx,

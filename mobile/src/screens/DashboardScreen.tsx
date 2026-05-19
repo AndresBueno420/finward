@@ -26,7 +26,7 @@ import {
 } from 'notification-listener';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
-const API_URL = 'http://192.168.86.241:8080';
+const API_URL = 'http://10.156.176.225:8080';
 
 const T = {
   blue:      '#4A6FA5',
@@ -126,6 +126,9 @@ function getBankColor(bankName: string): string {
 
 const nk = (ts?: number, pkg?: string) => `${ts ?? 0}_${pkg ?? ''}`;
 
+// Module-level: survives component unmount/remount (Strict Mode, navigation) within the same app session
+const sessionProcessed = new Set<string>();
+
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
 const NAV_TABS: { label: string; icon: keyof typeof Ionicons.glyphMap; active: boolean }[] = [
@@ -197,12 +200,13 @@ export default function DashboardScreen({ navigation }: Props) {
 
   async function markAndProcess(event: NotificationEvent) {
     const key = nk(event.timestamp, event.packageName);
-    if (inFlightRef.current.has(key)) return false;
+    if (inFlightRef.current.has(key) || sessionProcessed.has(key)) return false;
     inFlightRef.current.add(key);
     setNotifStatuses(prev => ({ ...prev, [key]: 'processing' }));
     const ok = await sendNotificationToApi(event);
     setNotifStatuses(prev => ({ ...prev, [key]: ok ? 'done' : 'error' }));
-    if (!ok) inFlightRef.current.delete(key); // permitir reintento
+    if (ok) sessionProcessed.add(key);
+    else inFlightRef.current.delete(key);
     return ok;
   }
 
